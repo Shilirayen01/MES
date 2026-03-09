@@ -1,0 +1,38 @@
+@using Mes.Opc.Contracts.Dtos
+@using mes_opc_ui.Components
+
+@if (Widget is null)
+{
+    <div class="widget-card">No widget</div>
+}
+else
+{
+    <div class="widget-card">
+        <div class="widget-title">@Widget.Title</div>
+
+        @switch (Normalize(Widget.WidgetType))
+        {
+            case "status":
+                <StatusWidget WidgetId="@Widget.Id" />
+                break;
+
+            case "counter":
+                <CounterWidget WidgetId="@Widget.Id" />
+                break;
+
+            case "summary":
+                <SummaryCardWidget WidgetId="@Widget.Id" />
+                break;
+
+            case "value":
+            default:
+                <ValueWidget WidgetId="@Widget.Id" />
+                break;
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public WidgetDto? Widget { get; set; }
+    private static string Normalize(string? s) => (s ?? string.Empty).Trim().ToLowerInvariant();
+}

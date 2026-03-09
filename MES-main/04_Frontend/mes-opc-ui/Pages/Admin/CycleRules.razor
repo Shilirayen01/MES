@@ -1,0 +1,421 @@
+@page "/admin/cycle-rules"
+@using mes_opc_ui.Services.AdminApi
+@inject MachinesApiClient MachinesApi
+@inject CycleRulesApiClient CycleRulesApi
+
+<h3>Règles de Détection de Cycles</h3>
+<p class="text-muted small mb-3">Configurez comment le Worker détecte le début et la fin d'un cycle de production pour chaque machine.</p>
+
+@* ── Machine selector ──────────────────────────────────────────────────────── *@
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <select class="form-select w-auto" @bind="_selectedMachine" @bind:after="LoadRules">
+        <option value="">-- Sélectionner une machine --</option>
+        @foreach (var m in _machines)
+        {
+            <option value="@m.MachineCode">@m.MachineCode — @m.Name</option>
+        }
+    </select>
+    <button class="btn btn-sm btn-outline-light" @onclick="LoadRules">Rafraîchir</button>
+    @if (!string.IsNullOrEmpty(_selectedMachine))
+    {
+        <button class="btn btn-sm btn-primary" @onclick="NewRule">+ Nouvelle Règle</button>
+    }
+</div>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+@* ── Rules table (all columns) ─────────────────────────────────────────────── *@
+@if (_rules is not null && _rules.Count > 0)
+{
+    <div class="table-responsive mb-4">
+        <table class="table table-dark table-striped table-hover align-middle" style="font-size:0.85rem">
+            <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>Scope</th>
+                    <th>Active</th>
+                    <th>Start Strategy</th>
+                    <th>Start NodeId</th>
+                    <th>Start Edge</th>
+                    <th>Start Value</th>
+                    <th>End Strategy</th>
+                    <th>End NodeId</th>
+                    <th>End Edge</th>
+                    <th>Fallback Strategy</th>
+                    <th>Fallback NodeId</th>
+                    <th>Abort NodeIds</th>
+                    <th>Debounce (ms)</th>
+                    <th>Min Cycle (s)</th>
+                    <th>Timeout (s)</th>
+                    <th>Epsilon</th>
+                    <th>TargetTolerance</th>
+                    <th>Valid. Speed NodeId</th>
+                    <th>Valid. Speed Min</th>
+                    <th>Valid. State NodeId</th>
+                    <th>Valid. State Value</th>
+                    <th>Recovery Strategy</th>
+                    <th>Recovery NodeId</th>
+                    <th>Recovery Delta</th>
+                    <th>Recovery Window (s)</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in _rules)
+                {
+                    <tr>
+                        <td>@r.Id</td>
+                        <td><code>@r.ScopeKey</code></td>
+                        <td>
+                            <span class="badge @(r.IsActive ? "bg-success" : "bg-secondary")">
+                                @(r.IsActive ? "Actif" : "Inactif")
+                            </span>
+                        </td>
+                        <td>@r.StartStrategy</td>
+                        <td><small class="text-white font-monospace">@r.StartNodeId</small></td>
+                        <td>@r.StartEdgeType</td>
+                        <td>@r.StartValue</td>
+                        <td>@r.EndPrimaryStrategy</td>
+                        <td><small class="text-white font-monospace">@r.EndPrimaryNodeId</small></td>
+                        <td>@r.EndPrimaryEdgeType</td>
+                        <td>@r.EndFallbackStrategy</td>
+                        <td><small class="text-white font-monospace">@r.EndFallbackNodeId</small></td>
+                        <td><small class="text-white">@r.AbortNodeIds</small></td>
+                        <td>@r.DebounceMs</td>
+                        <td>@r.MinCycleSeconds</td>
+                        <td>@r.TimeoutSeconds</td>
+                        <td>@r.Epsilon</td>
+                        <td>@r.TargetTolerance</td>
+                        <td><small class="text-white font-monospace">@r.ValidationSpeedNodeId</small></td>
+                        <td>@r.ValidationSpeedMin</td>
+                        <td><small class="text-white font-monospace">@r.ValidationStateNodeId</small></td>
+                        <td>@r.ValidationStateValue</td>
+                        <td>@r.RecoveryStrategy</td>
+                        <td><small class="text-white font-monospace">@r.RecoveryConfirmNodeId</small></td>
+                        <td>@r.RecoveryConfirmDelta</td>
+                        <td>@r.RecoveryConfirmWindowSeconds</td>
+                        <td class="text-nowrap">
+                            <button class="btn btn-sm btn-outline-info" @onclick="() => EditRule(r)">Edit</button>
+                            <button class="btn btn-sm btn-outline-danger ms-1" @onclick="() => DeleteRule(r)">Supprimer</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else if (_rules is not null && _rules.Count == 0 && !string.IsNullOrEmpty(_selectedMachine))
+{
+    <div class="alert alert-info">Aucune règle pour <strong>@_selectedMachine</strong>. Créez-en une ci-dessous.</div>
+}
+
+@* ── Create / Edit form (all fields, grouped by section) ──────────────────── *@
+@if (_form is not null)
+{
+    <hr />
+    <h5>@(_editId is null ? "Créer une Règle" : $"Modifier Règle #{_editId}")</h5>
+
+    @* ── Identity ─────────────────────────────────────────────────────────── *@
+    <h6 class="text-info mt-3">Identité</h6>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label">Scope Key</label>
+            <input class="form-control" @bind="_form.ScopeKey" placeholder="default" />
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="chkActive" @bind="_form.IsActive" />
+                <label class="form-check-label" for="chkActive">Actif</label>
+            </div>
+        </div>
+    </div>
+
+    @* ── Start Detection ──────────────────────────────────────────────────── *@
+    <h6 class="text-info mt-3">Détection de Début</h6>
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label">Start Strategy</label>
+            <select class="form-select" @bind="_form.StartStrategy">
+                <option>EdgeOnBit</option>
+                <option>ValueEquals</option>
+                <option>CounterIncrease</option>
+                <option>LastChanged</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Start NodeId</label>
+            <input class="form-control font-monospace" @bind="_form.StartNodeId" placeholder="ns=2;i=..." />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Edge Type</label>
+            <select class="form-select" @bind="_form.StartEdgeType">
+                <option value="">—</option>
+                <option>Rising</option>
+                <option>Falling</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Start Value</label>
+            <input class="form-control" @bind="_form.StartValue" placeholder="optionnel" />
+        </div>
+    </div>
+
+    @* ── End Detection (Primary) ──────────────────────────────────────────── *@
+    <h6 class="text-info mt-3">Détection de Fin (Primaire)</h6>
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label">End Strategy (primary)</label>
+            <select class="form-select" @bind="_form.EndPrimaryStrategy">
+                <option>EdgeOnBit</option>
+                <option>LastChanged</option>
+                <option>ValueEquals</option>
+                <option>CounterIncrease</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">End NodeId</label>
+            <input class="form-control font-monospace" @bind="_form.EndPrimaryNodeId" placeholder="ns=2;i=..." />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Edge Type</label>
+            <select class="form-select" @bind="_form.EndPrimaryEdgeType">
+                <option value="">—</option>
+                <option>Rising</option>
+                <option>Falling</option>
+            </select>
+        </div>
+    </div>
+
+    @* ── End Detection (Fallback) ─────────────────────────────────────────── *@
+    <h6 class="text-info mt-3">Détection de Fin (Fallback)</h6>
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label">Fallback Strategy</label>
+            <select class="form-select" @bind="_form.EndFallbackStrategy">
+                <option value="">— Aucun —</option>
+                <option>EdgeOnBit</option>
+                <option>LastChanged</option>
+                <option>ValueEquals</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Fallback NodeId</label>
+            <input class="form-control font-monospace" @bind="_form.EndFallbackNodeId" placeholder="ns=2;i=..." />
+        </div>
+    </div>
+
+    @* ── Abort ─────────────────────────────────────────────────────────────── *@
+    <h6 class="text-info mt-3">Annulation (Abort)</h6>
+    <div class="row g-3">
+        <div class="col-md-8">
+            <label class="form-label">Abort NodeIds <small class="text-muted">(séparés par ;)</small></label>
+            <input class="form-control font-monospace" @bind="_form.AbortNodeIds" placeholder="ns=2;i=100;ns=2;i=200" />
+        </div>
+    </div>
+
+    @* ── Timing ────────────────────────────────────────────────────────────── *@
+    <h6 class="text-info mt-3">Timing</h6>
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label">Debounce (ms)</label>
+            <input class="form-control" type="number" @bind="_form.DebounceMs" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Cycle min (s)</label>
+            <input class="form-control" type="number" @bind="_form.MinCycleSeconds" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Timeout (s)</label>
+            <input class="form-control" type="number" @bind="_form.TimeoutSeconds" />
+        </div>
+    </div>
+
+    @* ── Validation ────────────────────────────────────────────────────────── *@
+    <h6 class="text-info mt-3">Validation</h6>
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label">Epsilon</label>
+            <input class="form-control" type="number" step="0.001" @bind="_form.Epsilon" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Target Tolerance</label>
+            <input class="form-control" type="number" step="0.001" @bind="_form.TargetTolerance" />
+        </div>
+    </div>
+    <div class="row g-3 mt-1">
+        <div class="col-md-4">
+            <label class="form-label">Validation Speed NodeId</label>
+            <input class="form-control font-monospace" @bind="_form.ValidationSpeedNodeId" placeholder="ns=2;i=..." />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Speed Min</label>
+            <input class="form-control" type="number" step="0.001" @bind="_form.ValidationSpeedMin" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Validation State NodeId</label>
+            <input class="form-control font-monospace" @bind="_form.ValidationStateNodeId" placeholder="ns=2;i=..." />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">State Value</label>
+            <input class="form-control" @bind="_form.ValidationStateValue" placeholder="ex: RUNNING" />
+        </div>
+    </div>
+
+    @* ── Recovery ──────────────────────────────────────────────────────────── *@
+    <h6 class="text-info mt-3">Recovery (reprise après redémarrage)</h6>
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label">Recovery Strategy</label>
+            <select class="form-select" @bind="_form.RecoveryStrategy">
+                <option value="">— Aucun —</option>
+                <option>None</option>
+                <option>EdgeConfirm</option>
+                <option>CounterConfirm</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Confirm NodeId</label>
+            <input class="form-control font-monospace" @bind="_form.RecoveryConfirmNodeId" placeholder="ns=2;i=..." />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Confirm Delta</label>
+            <input class="form-control" type="number" step="0.001" @bind="_form.RecoveryConfirmDelta" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Confirm Window (s)</label>
+            <input class="form-control" type="number" @bind="_form.RecoveryConfirmWindowSeconds" />
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-4 mb-4">
+        <button class="btn btn-primary" @onclick="Save">Enregistrer</button>
+        <button class="btn btn-outline-light" @onclick="Cancel">Annuler</button>
+    </div>
+}
+
+@code {
+    private List<MachineDto> _machines = new();
+    private List<CycleRuleDto>? _rules;
+    private string _selectedMachine = "";
+    private string? _error;
+    private CycleRuleCreateDto? _form;
+    private int? _editId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _machines = await MachinesApi.GetAllAsync(true) ?? []; }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task LoadRules()
+    {
+        if (string.IsNullOrEmpty(_selectedMachine)) { _rules = null; return; }
+        _error = null;
+        try { _rules = await CycleRulesApi.GetAllAsync(_selectedMachine) ?? []; }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private void NewRule()
+    {
+        _editId = null;
+        _form = new CycleRuleCreateDto();
+    }
+
+    private void EditRule(CycleRuleDto r)
+    {
+        _editId = r.Id;
+        _form = new CycleRuleCreateDto
+        {
+            ScopeKey = r.ScopeKey,
+            IsActive = r.IsActive,
+            StartStrategy = r.StartStrategy,
+            StartNodeId = r.StartNodeId,
+            StartEdgeType = r.StartEdgeType ?? "Rising",
+            StartValue = r.StartValue,
+            EndPrimaryStrategy = r.EndPrimaryStrategy,
+            EndPrimaryNodeId = r.EndPrimaryNodeId,
+            EndPrimaryEdgeType = r.EndPrimaryEdgeType ?? "Falling",
+            EndFallbackStrategy = r.EndFallbackStrategy,
+            EndFallbackNodeId = r.EndFallbackNodeId,
+            AbortNodeIds = r.AbortNodeIds,
+            DebounceMs = r.DebounceMs,
+            MinCycleSeconds = r.MinCycleSeconds,
+            TimeoutSeconds = r.TimeoutSeconds,
+            Epsilon = r.Epsilon,
+            TargetTolerance = r.TargetTolerance,
+            ValidationSpeedNodeId = r.ValidationSpeedNodeId,
+            ValidationSpeedMin = r.ValidationSpeedMin,
+            ValidationStateNodeId = r.ValidationStateNodeId,
+            ValidationStateValue = r.ValidationStateValue,
+            RecoveryStrategy = r.RecoveryStrategy,
+            RecoveryConfirmNodeId = r.RecoveryConfirmNodeId,
+            RecoveryConfirmDelta = r.RecoveryConfirmDelta,
+            RecoveryConfirmWindowSeconds = r.RecoveryConfirmWindowSeconds
+        };
+    }
+
+    private async Task Save()
+    {
+        if (_form is null || string.IsNullOrEmpty(_selectedMachine)) return;
+        _error = null;
+        try
+        {
+            if (_editId is null)
+            {
+                await CycleRulesApi.CreateAsync(_selectedMachine, _form);
+            }
+            else
+            {
+                var upd = new CycleRuleUpdateDto
+                {
+                    ScopeKey = _form.ScopeKey,
+                    IsActive = _form.IsActive,
+                    StartStrategy = _form.StartStrategy,
+                    StartNodeId = _form.StartNodeId,
+                    StartEdgeType = _form.StartEdgeType,
+                    StartValue = _form.StartValue,
+                    EndPrimaryStrategy = _form.EndPrimaryStrategy,
+                    EndPrimaryNodeId = _form.EndPrimaryNodeId,
+                    EndPrimaryEdgeType = _form.EndPrimaryEdgeType,
+                    EndFallbackStrategy = _form.EndFallbackStrategy,
+                    EndFallbackNodeId = _form.EndFallbackNodeId,
+                    AbortNodeIds = _form.AbortNodeIds,
+                    DebounceMs = _form.DebounceMs,
+                    MinCycleSeconds = _form.MinCycleSeconds,
+                    TimeoutSeconds = _form.TimeoutSeconds,
+                    Epsilon = _form.Epsilon,
+                    TargetTolerance = _form.TargetTolerance,
+                    ValidationSpeedNodeId = _form.ValidationSpeedNodeId,
+                    ValidationSpeedMin = _form.ValidationSpeedMin,
+                    ValidationStateNodeId = _form.ValidationStateNodeId,
+                    ValidationStateValue = _form.ValidationStateValue,
+                    RecoveryStrategy = _form.RecoveryStrategy,
+                    RecoveryConfirmNodeId = _form.RecoveryConfirmNodeId,
+                    RecoveryConfirmDelta = _form.RecoveryConfirmDelta,
+                    RecoveryConfirmWindowSeconds = _form.RecoveryConfirmWindowSeconds
+                };
+                await CycleRulesApi.UpdateAsync(_selectedMachine, _editId.Value, upd);
+            }
+            _form = null;
+            _editId = null;
+            await LoadRules();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task DeleteRule(CycleRuleDto r)
+    {
+        _error = null;
+        try
+        {
+            await CycleRulesApi.DeleteAsync(_selectedMachine, r.Id);
+            await LoadRules();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private void Cancel() { _form = null; _editId = null; }
+}

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MES OPC Realtime Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.js"></script>
+</head>
+<body>
+    <h1>MES OPC Realtime Test</h1>
+    <p>Incoming tag updates:</p>
+    <ul id="messagesList"></ul>
+
+    <script>
+        // ✅ REST API host (Mes.Opc.Platform.Api)
+        // Change le port si ton Api tourne ailleurs.
+        const apiBaseUrl = "https://localhost:61818";
+
+        // ✅ SignalR host (Mes.Opc.Platform.Realtime)
+        // Ici on peut garder relatif car la page est servie par Realtime (61820)
+        const hubUrl = "/opcHub";
+
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl(hubUrl, {
+                accessTokenFactory: () => "test" // ton hub est [Authorize]
+            })
+            .configureLogging(signalR.LogLevel.Information)
+            .build();
+
+        connection.on("tagUpdate", (data) => {
+            const li = document.createElement("li");
+            li.textContent = JSON.stringify(data);
+            document.getElementById("messagesList").appendChild(li);
+        });
+
+        async function start() {
+            try {
+                await connection.start();
+                console.log("Connected to SignalR");
+
+                // ✅ Maintenant on appelle l’API sur 61818 (pas Realtime)
+                try {
+                    const response = await fetch(`${apiBaseUrl}/api/machines`);
+                    if (!response.ok) {
+                        console.warn("API /api/machines returned", response.status);
+                        return;
+                    }
+
+                    const machines = await response.json();
+                    machines.forEach(m => {
+                        const code = m.machineCode || m.MachineCode || m.code;
+                        if (code) {
+                            connection.invoke("JoinMachine", code)
+                                .catch(err => console.error("Error joining machine", code, err));
+                        }
+                    });
+                } catch (fetchErr) {
+                    console.warn("Could not fetch machines to join groups", fetchErr);
+                }
+            } catch (err) {
+                console.error(err);
+                setTimeout(start, 5000);
+            }
+        }
+
+        connection.onclose(async () => {
+            await start();
+        });
+
+        start();
+    </script>
+</body>
+</html>

@@ -1,0 +1,281 @@
+﻿@page "/admin/machines/{MachineCode}/tag-mappings"
+@using mes_opc_ui.Services.AdminApi
+@using Microsoft.AspNetCore.Components.Forms
+@inject TagMappingsApiClient Api
+@inject NavigationManager Nav
+
+<h3>Tag Mappings — @MachineCode</h3>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <button class="btn btn-sm btn-primary" @onclick="New">+ Nouveau Mapping</button>
+    <button class="btn btn-sm btn-outline-light" @onclick="Back">Retour</button>
+    <button class="btn btn-sm btn-outline-light" @onclick="Load">Rafraîchir</button>
+</div>
+
+@if (Error is not null)
+{
+    <div style="color:red">@Error</div>
+}
+
+@if (Items is null)
+{
+    <p>Chargement...</p>
+}
+else
+{
+    <div class="table-responsive">
+    <table class="table table-dark table-striped table-hover align-middle">
+        <thead>
+        <tr>
+            <th>Id</th>
+            <th>OpcNodeId</th>
+            <th>Characteristic</th>
+            <th>Type</th>
+            <th>Sampling</th>
+            <th>Publishing</th>
+            <th>Active</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var t in Items)
+        {
+            <tr>
+                <td>@t.Id</td>
+                <td style="max-width:420px; word-break:break-all;">@t.OpcNodeId</td>
+                <td>@t.CharacteristicCode</td>
+                <td>@t.DataTypeExpected</td>
+                <td>@t.SamplingMs</td>
+                <td>@t.PublishingMs</td>
+                <td>@(t.IsActive ? "Yes" : "No")</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-info" @onclick="() => Edit(t)">Edit</button>
+                    <button class="btn btn-sm btn-outline-warning ms-2" @onclick="() => Deactivate(t)">Désactiver</button>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    </div>
+}
+
+@if (CreateForm is not null)
+{
+    <hr />
+    <h4>Créer Mapping</h4>
+    <EditForm Model="CreateForm" OnValidSubmit="SaveCreate">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div>
+            <label>OpcNodeId</label><br />
+            <InputText class="form-control" @bind-Value="CreateForm.OpcNodeId" />
+        </div>
+
+        <div style="margin-top:8px;">
+            <label>CharacteristicCode</label><br />
+            <InputText class="form-control" @bind-Value="CreateForm.CharacteristicCode" />
+        </div>
+
+        <div style="margin-top:8px;">
+            <label>DataTypeExpected</label><br />
+            <InputText class="form-control" @bind-Value="CreateForm.DataTypeExpected" />
+        </div>
+
+        <div style="margin-top:8px;">
+            <label>Unit</label><br />
+            <InputText class="form-control" @bind-Value="CreateForm.Unit" />
+        </div>
+
+        <div style="margin-top:8px;">
+            <label>MinValue</label><br />
+            <InputNumber class="form-control" TValue="double?" @bind-Value="CreateForm.MinValue" />
+        </div>
+
+        <div style="margin-top:8px;">
+            <label>MaxValue</label><br />
+            <InputNumber class="form-control" TValue="double?" @bind-Value="CreateForm.MaxValue" />
+        </div>
+
+        <div style="margin-top:8px;">
+            <label>SamplingMs</label><br />
+            <InputNumber class="form-control" TValue="int?" @bind-Value="CreateForm.SamplingMs" />
+        </div>
+
+        <div style="margin-top:8px;">
+            <label>PublishingMs</label><br />
+            <InputNumber class="form-control" TValue="int?" @bind-Value="CreateForm.PublishingMs" />
+        </div>
+
+        <div style="margin-top:8px;">
+            <label>Active</label>
+            <InputCheckbox class="form-check-input" @bind-Value="CreateForm.IsActive" />
+        </div>
+
+
+        <div style="margin-top:12px;">
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <button type="button" class="btn btn-outline-light ms-2" @onclick="Cancel">Annuler</button>
+        </div>
+    </EditForm>
+}
+
+@if (UpdateForm is not null)
+{
+    <hr />
+    <h4>Modifier Mapping (#@EditId)</h4>
+    <EditForm Model="UpdateForm" OnValidSubmit="SaveUpdate">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div>
+            <label>OpcNodeId</label><br />
+            <InputText class="form-control" @bind-Value="UpdateForm.OpcNodeId" />
+        </div>
+
+        <div style="margin-top:8px;">
+            <label>CharacteristicCode</label><br />
+            <InputText class="form-control" @bind-Value="UpdateForm.CharacteristicCode" />
+        </div>
+
+        <div style="margin-top:8px;">
+            <label>DataTypeExpected</label><br />
+            <InputText class="form-control" @bind-Value="UpdateForm.DataTypeExpected" />
+        </div>
+
+        <div style="margin-top:8px;">
+            <label>Unit</label><br />
+            <InputText class="form-control" @bind-Value="UpdateForm.Unit" />
+        </div>
+
+        <div style="margin-top:8px;">
+            <label>MinValue</label><br />
+            <InputNumber class="form-control" TValue="double?" @bind-Value="UpdateForm.MinValue" />
+        </div>
+
+        <div style="margin-top:8px;">
+            <label>MaxValue</label><br />
+            <InputNumber class="form-control" TValue="double?" @bind-Value="UpdateForm.MaxValue" />
+        </div>
+
+        <div style="margin-top:8px;">
+            <label>SamplingMs</label><br />
+            <InputNumber class="form-control" TValue="int?" @bind-Value="UpdateForm.SamplingMs" />
+        </div>
+
+        <div style="margin-top:8px;">
+            <label>PublishingMs</label><br />
+            <InputNumber class="form-control" TValue="int?" @bind-Value="UpdateForm.PublishingMs" />
+        </div>
+
+        <div style="margin-top:8px;">
+            <label>Active</label>
+            <InputCheckbox class="form-check-input" @bind-Value="UpdateForm.IsActive" />
+        </div>
+
+
+        <div style="margin-top:12px;">
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <button type="button" class="btn btn-outline-light ms-2" @onclick="Cancel">Annuler</button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public string MachineCode { get; set; } = "";
+
+    private List<MachineTagMappingDto>? Items;
+    private string? Error;
+
+    private MachineTagMappingCreateDto? CreateForm;
+    private MachineTagMappingUpdateDto? UpdateForm;
+    private int EditId;
+
+    protected override async Task OnParametersSetAsync() => await Load();
+
+    private async Task Load()
+    {
+        Error = null;
+        Items = null;
+        StateHasChanged();
+
+        try
+        {
+            Items = await Api.GetByMachineAsync(MachineCode) ?? [];
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+            Items = [];
+        }
+    }
+
+    private void New()
+    {
+        UpdateForm = null;
+        EditId = 0;
+        CreateForm = new MachineTagMappingCreateDto { IsActive = true };
+    }
+
+    private void Edit(MachineTagMappingDto t)
+    {
+        CreateForm = null;
+        EditId = t.Id;
+        UpdateForm = new MachineTagMappingUpdateDto
+        {
+            OpcNodeId = t.OpcNodeId,
+            CharacteristicCode = t.CharacteristicCode,
+            DataTypeExpected = t.DataTypeExpected,
+            Unit = t.Unit,
+            MinValue = t.MinValue,
+            MaxValue = t.MaxValue,
+            SamplingMs = t.SamplingMs,
+            PublishingMs = t.PublishingMs,
+            IsActive = t.IsActive
+        };
+    }
+
+    private async Task Deactivate(MachineTagMappingDto t)
+    {
+        try
+        {
+            await Api.DeleteAsync(t.Id);
+            await Load();
+        }
+        catch (Exception ex) { Error = ex.Message; }
+    }
+
+    private async Task SaveCreate()
+    {
+        if (CreateForm is null) return;
+        try
+        {
+            await Api.CreateAsync(MachineCode, CreateForm);
+            CreateForm = null;
+            await Load();
+        }
+        catch (Exception ex) { Error = ex.Message; }
+    }
+
+    private async Task SaveUpdate()
+    {
+        if (UpdateForm is null) return;
+        try
+        {
+            await Api.UpdateAsync(EditId, UpdateForm);
+            UpdateForm = null;
+            EditId = 0;
+            await Load();
+        }
+        catch (Exception ex) { Error = ex.Message; }
+    }
+
+    private void Cancel()
+    {
+        CreateForm = null;
+        UpdateForm = null;
+        EditId = 0;
+    }
+
+    private void Back() => Nav.NavigateTo("/admin/machines");
+}

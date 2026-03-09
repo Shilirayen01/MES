@@ -1,0 +1,19 @@
+.app-shell { min-height: 100vh; background: #0b1220; color: #e7eefc; }
+.topbar { display:flex; align-items:baseline; gap:12px; padding:16px 24px; background:#0f1a33; border-bottom:1px solid rgba(255,255,255,.08); }
+.brand { font-weight:700; letter-spacing:.5px; }
+.subtitle { opacity:.75; font-size:.9rem; }
+.content { padding:24px; }
+
+.zone-card { background:#101d3b; border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:16px; }
+.zone-title { font-size:1.05rem; font-weight:600; margin-bottom:12px; }
+
+.widget-card { background:#0f1a33; border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:16px; height: 100%; }
+.widget-title { font-weight:600; margin-bottom:10px; }
+.kpi { font-size:2.0rem; font-weight:700; letter-spacing:.3px; }
+.kpi-sub { opacity:.75; font-size:.85rem; }
+
+.badge-soft { padding: .45rem .65rem; border-radius: 999px; font-weight:600; }
+.badge-run { background: rgba(46, 204, 113, .18); color: #2ecc71; border: 1px solid rgba(46, 204, 113, .35); }
+.badge-stop { background: rgba(241, 196, 15, .18); color: #f1c40f; border: 1px solid rgba(241, 196, 15, .35); }
+.badge-fault { background: rgba(231, 76, 60, .18); color: #e74c3c; border: 1px solid rgba(231, 76, 60, .35); }
+.badge-unk { background: rgba(149, 165, 166, .18); color: #bdc3c7; border: 1px solid rgba(149, 165, 166, .35); }

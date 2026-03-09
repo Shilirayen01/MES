@@ -1,0 +1,10 @@
+@inject mes_opc_ui.Services.WidgetValueStore Store
+
+<div class="kpi">@Display</div>
+<div class="kpi-sub">Role: Counter</div>
+
+@code {
+    [Parameter] public Guid WidgetId { get; set; }
+
+    private string Display => Store.Get(WidgetId, "Counter") ?? Store.Get(WidgetId, "Value") ?? "0";
+}

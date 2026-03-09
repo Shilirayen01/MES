@@ -1,0 +1,437 @@
+﻿@page "/admin/ui-dashboards/{DashboardId:guid}"
+@using Microsoft.AspNetCore.Components.Forms
+@using mes_opc_ui.Services.AdminApi
+@inject UiAdminApiClient Api
+@inject NavigationManager Nav
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="mb-0">UI Management</h3>
+        <small class="text-muted">DashboardId: @DashboardId</small>
+    </div>
+    <button class="btn btn-outline-secondary" @onclick="Back">Retour</button>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Error))
+{
+    <div class="alert alert-danger">@Error</div>
+}
+
+<div class="row g-3">
+    <div class="col-12 col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>Zones</strong>
+                <button class="btn btn-sm btn-primary" @onclick="NewZone">+ Zone</button>
+            </div>
+
+            <div class="list-group list-group-flush">
+                @if (Zones is null)
+                {
+                    <div class="p-3 text-muted">Chargement...</div>
+                }
+                else if (Zones.Count == 0)
+                {
+                    <div class="p-3 text-muted">Aucune zone.</div>
+                }
+                else
+                {
+                    @foreach (var z in Zones.OrderBy(x => x.OrderIndex))
+                    {
+                        var active = (z.Id == SelectedZoneId);
+                        <button class="list-group-item list-group-item-action @(active ? "active" : "")"
+                                @onclick="() => SelectZone(z.Id)">
+                            <div class="d-flex justify-content-between">
+                                <div class="text-truncate">
+                                    <div class="fw-semibold">@z.Title</div>
+                                    <div class="small opacity-75">@z.LayoutType • Order @z.OrderIndex</div>
+                                </div>
+                                <div class="ms-2 d-flex gap-1">
+                                    <span class="badge text-bg-light">Widgets</span>
+                                </div>
+                            </div>
+
+                            <div class="mt-2 d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-light" @onclick:stopPropagation="true" @onclick="() => EditZone(z)">Edit</button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick:stopPropagation="true" @onclick="() => DeleteZone(z.Id)">Del</button>
+                            </div>
+                        </button>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>Widgets</strong>
+                <button class="btn btn-sm btn-primary" @onclick="NewWidget" disabled="@(SelectedZoneId==Guid.Empty)">+ Widget</button>
+            </div>
+
+            @if (SelectedZoneId == Guid.Empty)
+            {
+                <div class="p-3 text-muted">Sélectionne une zone.</div>
+            }
+            else if (Widgets is null)
+            {
+                <div class="p-3 text-muted">Chargement...</div>
+            }
+            else if (Widgets.Count == 0)
+            {
+                <div class="p-3 text-muted">Aucun widget.</div>
+            }
+            else
+            {
+                <div class="list-group list-group-flush">
+                    @foreach (var w in Widgets.OrderBy(x => x.OrderIndex))
+                    {
+                        var activeW = (w.Id == SelectedWidgetId);
+                        <button class="list-group-item list-group-item-action @(activeW ? "active" : "")"
+                                @onclick="() => SelectWidget(w.Id)">
+                            <div class="d-flex justify-content-between">
+                                <div class="text-truncate">
+                                    <div class="fw-semibold">@w.Title</div>
+                                    <div class="small opacity-75">@w.WidgetType • Order @w.OrderIndex</div>
+                                </div>
+                            </div>
+
+                            <div class="mt-2 d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-light" @onclick:stopPropagation="true" @onclick="() => EditWidget(w)">Edit</button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick:stopPropagation="true" @onclick="() => DeleteWidget(w.Id)">Del</button>
+                            </div>
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>Bindings</strong>
+                <button class="btn btn-sm btn-primary" @onclick="NewBinding" disabled="@(SelectedWidgetId==Guid.Empty)">+ Binding</button>
+            </div>
+
+            @if (SelectedWidgetId == Guid.Empty)
+            {
+                <div class="p-3 text-muted">Sélectionne un widget.</div>
+            }
+            else if (Bindings is null)
+            {
+                <div class="p-3 text-muted">Chargement...</div>
+            }
+            else if (Bindings.Count == 0)
+            {
+                <div class="p-3 text-muted">Aucun binding.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Machine</th>
+                                <th>Role</th>
+                                <th>OpcNodeId</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var b in Bindings)
+                            {
+                                <tr>
+                                    <td>@b.MachineCode</td>
+                                    <td>@b.BindingRole</td>
+                                    <td style="max-width:260px; word-break:break-all;">@b.OpcNodeId</td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => EditBinding(b)">Edit</button>
+                                        <button class="btn btn-sm btn-outline-danger ms-1" @onclick="() => DeleteBinding(b.Id)">Del</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@* Modal Zone *@
+@if (ZoneForm is not null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(ZoneEditId==Guid.Empty ? "Créer Zone" : "Modifier Zone")</h5>
+                    <button class="btn-close" @onclick="CloseZone"></button>
+                </div>
+
+                <EditForm Model="ZoneForm" OnValidSubmit="SaveZone">
+                    <DataAnnotationsValidator />
+                    <div class="modal-body">
+                        <ValidationSummary />
+
+                        <div class="mb-2">
+                            <label class="form-label">Title</label>
+                            <InputText class="form-control" @bind-Value="ZoneForm.Title" />
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label">LayoutType</label>
+                            <InputText class="form-control" @bind-Value="ZoneForm.LayoutType" />
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label">PropsJson</label>
+                            <InputText class="form-control" @bind-Value="ZoneForm.PropsJson" />
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label">OrderIndex</label>
+                            <InputNumber class="form-control" TValue="int" @bind-Value="ZoneForm.OrderIndex" />
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseZone">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@* Modal Widget *@
+@if (WidgetForm is not null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(WidgetEditId==Guid.Empty ? "Créer Widget" : "Modifier Widget")</h5>
+                    <button class="btn-close" @onclick="CloseWidget"></button>
+                </div>
+
+                <EditForm Model="WidgetForm" OnValidSubmit="SaveWidget">
+                    <DataAnnotationsValidator />
+                    <div class="modal-body">
+                        <ValidationSummary />
+
+                        <div class="mb-2">
+                            <label class="form-label">Title</label>
+                            <InputText class="form-control" @bind-Value="WidgetForm.Title" />
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label">WidgetType</label>
+                            <InputText class="form-control" @bind-Value="WidgetForm.WidgetType" />
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label">PropsJson</label>
+                            <InputText class="form-control" @bind-Value="WidgetForm.PropsJson" />
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label">OrderIndex</label>
+                            <InputNumber class="form-control" TValue="int" @bind-Value="WidgetForm.OrderIndex" />
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseWidget">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@* Modal Binding *@
+@if (BindingForm is not null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(BindingEditId==Guid.Empty ? "Créer Binding" : "Modifier Binding")</h5>
+                    <button class="btn-close" @onclick="CloseBinding"></button>
+                </div>
+
+                <EditForm Model="BindingForm" OnValidSubmit="SaveBinding">
+                    <DataAnnotationsValidator />
+                    <div class="modal-body">
+                        <ValidationSummary />
+
+                        <div class="mb-2">
+                            <label class="form-label">MachineCode</label>
+                            <InputText class="form-control" @bind-Value="BindingForm.MachineCode" />
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label">OpcNodeId</label>
+                            <InputText class="form-control" @bind-Value="BindingForm.OpcNodeId" />
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label">BindingRole</label>
+                            <InputText class="form-control" @bind-Value="BindingForm.BindingRole" />
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseBinding">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid DashboardId { get; set; }
+
+    private string? Error;
+
+    private List<UiZoneDto>? Zones;
+    private Guid SelectedZoneId;
+    private List<UiWidgetDto>? Widgets;
+    private Guid SelectedWidgetId;
+    private List<UiWidgetBindingDto>? Bindings;
+
+    private UiZoneCreateDto? ZoneForm;
+    private Guid ZoneEditId;
+
+    private UiWidgetCreateDto? WidgetForm;
+    private Guid WidgetEditId;
+
+    private UiWidgetBindingCreateDto? BindingForm;
+    private Guid BindingEditId;
+
+    protected override async Task OnParametersSetAsync() => await LoadZones();
+
+    private void Back() => Nav.NavigateTo("/admin/ui-dashboards");
+
+    private async Task LoadZones()
+    {
+        Error = null;
+        Zones = null;
+
+        SelectedZoneId = Guid.Empty;
+        SelectedWidgetId = Guid.Empty;
+        Widgets = null;
+        Bindings = null;
+
+        try { Zones = await Api.GetZonesAsync(DashboardId) ?? []; }
+        catch (Exception ex) { Error = ex.Message; Zones = []; }
+    }
+
+    // Zones
+    private void NewZone() { ZoneEditId = Guid.Empty; ZoneForm = new UiZoneCreateDto(); }
+    private void EditZone(UiZoneDto z) { ZoneEditId = z.Id; ZoneForm = new UiZoneCreateDto { Title = z.Title, LayoutType = z.LayoutType, PropsJson = z.PropsJson, OrderIndex = z.OrderIndex }; }
+    private void CloseZone() => ZoneForm = null;
+
+    private async Task SaveZone()
+    {
+        if (ZoneForm is null) return;
+        try
+        {
+            if (ZoneEditId == Guid.Empty)
+                await Api.CreateZoneAsync(DashboardId, ZoneForm);
+            else
+                await Api.UpdateZoneAsync(ZoneEditId, new UiZoneUpdateDto { Title = ZoneForm.Title, LayoutType = ZoneForm.LayoutType, PropsJson = ZoneForm.PropsJson, OrderIndex = ZoneForm.OrderIndex });
+
+            CloseZone();
+            await LoadZones();
+        }
+        catch (Exception ex) { Error = ex.Message; }
+    }
+
+    private async Task DeleteZone(Guid id)
+    {
+        try { await Api.DeleteZoneAsync(id); await LoadZones(); }
+        catch (Exception ex) { Error = ex.Message; }
+    }
+
+    private async Task SelectZone(Guid zoneId)
+    {
+        SelectedZoneId = zoneId;
+        SelectedWidgetId = Guid.Empty;
+        Bindings = null;
+
+        try { Widgets = await Api.GetWidgetsAsync(zoneId) ?? []; }
+        catch (Exception ex) { Error = ex.Message; Widgets = []; }
+    }
+
+    // Widgets
+    private void NewWidget() { if (SelectedZoneId == Guid.Empty) return; WidgetEditId = Guid.Empty; WidgetForm = new UiWidgetCreateDto(); }
+    private void EditWidget(UiWidgetDto w) { WidgetEditId = w.Id; WidgetForm = new UiWidgetCreateDto { Title = w.Title, WidgetType = w.WidgetType, PropsJson = w.PropsJson, OrderIndex = w.OrderIndex }; }
+    private void CloseWidget() => WidgetForm = null;
+
+    private async Task SaveWidget()
+    {
+        if (WidgetForm is null) return;
+        if (SelectedZoneId == Guid.Empty) { Error = "Sélectionne une zone."; return; }
+
+        try
+        {
+            if (WidgetEditId == Guid.Empty)
+                await Api.CreateWidgetAsync(SelectedZoneId, WidgetForm);
+            else
+                await Api.UpdateWidgetAsync(WidgetEditId, new UiWidgetUpdateDto { Title = WidgetForm.Title, WidgetType = WidgetForm.WidgetType, PropsJson = WidgetForm.PropsJson, OrderIndex = WidgetForm.OrderIndex });
+
+            CloseWidget();
+            await SelectZone(SelectedZoneId);
+        }
+        catch (Exception ex) { Error = ex.Message; }
+    }
+
+    private async Task DeleteWidget(Guid id)
+    {
+        try { await Api.DeleteWidgetAsync(id); await SelectZone(SelectedZoneId); }
+        catch (Exception ex) { Error = ex.Message; }
+    }
+
+    private async Task SelectWidget(Guid widgetId)
+    {
+        SelectedWidgetId = widgetId;
+        try { Bindings = await Api.GetBindingsAsync(widgetId) ?? []; }
+        catch (Exception ex) { Error = ex.Message; Bindings = []; }
+    }
+
+    // Bindings
+    private void NewBinding() { if (SelectedWidgetId == Guid.Empty) return; BindingEditId = Guid.Empty; BindingForm = new UiWidgetBindingCreateDto(); }
+    private void EditBinding(UiWidgetBindingDto b) { BindingEditId = b.Id; BindingForm = new UiWidgetBindingCreateDto { MachineCode = b.MachineCode, OpcNodeId = b.OpcNodeId, BindingRole = b.BindingRole }; }
+    private void CloseBinding() => BindingForm = null;
+
+    private async Task SaveBinding()
+    {
+        if (BindingForm is null) return;
+        if (SelectedWidgetId == Guid.Empty) { Error = "Sélectionne un widget."; return; }
+
+        try
+        {
+            if (BindingEditId == Guid.Empty)
+                await Api.CreateBindingAsync(SelectedWidgetId, BindingForm);
+            else
+                await Api.UpdateBindingAsync(BindingEditId, new UiWidgetBindingUpdateDto { MachineCode = BindingForm.MachineCode, OpcNodeId = BindingForm.OpcNodeId, BindingRole = BindingForm.BindingRole });
+
+            CloseBinding();
+            await SelectWidget(SelectedWidgetId);
+        }
+        catch (Exception ex) { Error = ex.Message; }
+    }
+
+    private async Task DeleteBinding(Guid id)
+    {
+        try { await Api.DeleteBindingAsync(id); await SelectWidget(SelectedWidgetId); }
+        catch (Exception ex) { Error = ex.Message; }
+    }
+}

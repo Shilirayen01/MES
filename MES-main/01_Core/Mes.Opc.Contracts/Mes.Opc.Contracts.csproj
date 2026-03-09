@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Cible .NET 8.0 pour une librairie de contrats -->
+    <TargetFramework>net8.0</TargetFramework>
+    <!-- Active l'analyse des références nullables -->
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>

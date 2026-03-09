@@ -1,0 +1,29 @@
+@inject mes_opc_ui.Services.WidgetValueStore Store
+
+@{
+    var raw = (Store.Get(WidgetId, "Status") ?? "").Trim();
+    var (css, label) = Classify(raw);
+}
+
+<div>
+    <span class="badge-soft @css">@label</span>
+</div>
+<div class="kpi-sub mt-2">Role: Status</div>
+
+@code {
+    [Parameter] public Guid WidgetId { get; set; }
+
+    private static (string css, string label) Classify(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return ("badge-unk", "UNKNOWN");
+
+        // Common MES/PLC patterns
+        var u = s.ToUpperInvariant();
+        if (u is "1" or "TRUE" or "RUN" or "RUNNING") return ("badge-run", "RUN");
+        if (u is "0" or "FALSE" or "STOP" or "STOPPED") return ("badge-stop", "STOP");
+        if (u.Contains("FAULT") || u.Contains("ALARM") || u.Contains("ERROR")) return ("badge-fault", "FAULT");
+
+        // Fallback: show raw
+        return ("badge-unk", u);
+    }
+}

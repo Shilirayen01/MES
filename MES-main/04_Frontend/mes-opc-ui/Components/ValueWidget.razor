@@ -1,0 +1,29 @@
+﻿@implements IDisposable
+@inject mes_opc_ui.Services.WidgetValueStore Store
+
+<div class="widget-body">
+    <div class="widget-value">
+        @(Store.Get(WidgetId, "Option") ?? "—")
+    </div>
+    <div class="widget-value">
+        value: @(Store.Get(WidgetId, "Value")?? "—")
+    </div>
+    
+</div>
+
+@code {
+    [Parameter] public Guid WidgetId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Store.Changed += OnStoreChanged;
+    }
+
+    private void OnStoreChanged()
+        => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Store.Changed -= OnStoreChanged;
+    }
+}

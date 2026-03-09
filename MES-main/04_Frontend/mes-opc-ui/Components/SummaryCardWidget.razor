@@ -1,0 +1,56 @@
+@implements IDisposable
+@inject mes_opc_ui.Services.WidgetValueStore Store
+
+@{
+    var raw = Store.Get(WidgetId, "Summary") ?? Store.Get(WidgetId, "Value");
+    var hasValue = !string.IsNullOrEmpty(raw);
+    // Try to parse as number for formatting
+    double.TryParse(raw, System.Globalization.NumberStyles.Any,
+        System.Globalization.CultureInfo.InvariantCulture, out var numVal);
+    var display = hasValue ? (double.TryParse(raw,
+        System.Globalization.NumberStyles.Any,
+        System.Globalization.CultureInfo.InvariantCulture, out _)
+        ? numVal.ToString("N2")
+        : raw) : "—";
+}
+
+<div class="summary-card">
+    <div class="summary-value @(hasValue ? "" : "text-muted")">@display</div>
+    <div class="summary-label">
+        @(Store.Get(WidgetId, "Unit") ?? "")
+    </div>
+    <div class="kpi-sub mt-1">Role: Summary</div>
+</div>
+
+<style>
+    .summary-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 0.5rem 0;
+    }
+    .summary-icon {
+        font-size: 1.5rem;
+        margin-bottom: 0.25rem;
+        opacity: 0.8;
+    }
+    .summary-value {
+        font-size: 2rem;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        line-height: 1;
+    }
+    .summary-label {
+        font-size: 0.75rem;
+        color: var(--bs-secondary-color, #adb5bd);
+        margin-top: 0.15rem;
+    }
+</style>
+
+@code {
+    [Parameter] public Guid WidgetId { get; set; }
+
+    protected override void OnInitialized() => Store.Changed += OnStoreChanged;
+    private void OnStoreChanged() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Store.Changed -= OnStoreChanged;
+}

@@ -1,0 +1,19 @@
+@using Microsoft.AspNetCore.Components.Routing
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom" style="border-color: rgba(255,255,255,.08) !important;">
+    <div class="container-fluid px-0">
+        <ul class="navbar-nav flex-row gap-3">
+            <li class="nav-item">
+                <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+                    Dashboard
+                </NavLink>
+            </li>
+            <li class="nav-item">
+                <NavLink class="nav-link" href="/admin" Match="NavLinkMatch.Prefix">
+                    Admin
+                </NavLink>
+            </li>
+            
+        </ul>
+    </div>
+</nav>

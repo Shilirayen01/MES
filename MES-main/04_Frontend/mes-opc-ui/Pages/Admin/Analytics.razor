@@ -1,0 +1,268 @@
+@page "/admin/analytics"
+@using mes_opc_ui.Services.AdminApi
+@inject AnalyticsApiClient AnalyticsApi
+@inject MachinesApiClient MachinesApi
+
+<h3>Analytics — KPI & Résumés</h3>
+<p class="text-muted small mb-3">Configurez les agrégations calculées par le Worker pour chaque run de production.</p>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+@* ── Definitions list ────────────────────────────────────────────────────────── *@
+<div class="d-flex gap-2 mb-3">
+    <button class="btn btn-sm btn-primary" @onclick="NewDefinition">+ Nouvelle Définition</button>
+    <button class="btn btn-sm btn-outline-light" @onclick="Load">Rafraîchir</button>
+</div>
+
+@if (_defs is null)
+{
+    <p>Chargement...</p>
+}
+else if (_defs.Count == 0)
+{
+    <div class="alert alert-info">Aucune définition. Créez-en une ci-dessous.</div>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        @foreach (var d in _defs)
+        {
+            <div class="col-12 col-lg-6">
+                <div class="card bg-dark border @(_selectedDef?.SummaryId == d.SummaryId ? "border-primary" : "border-secondary")">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>
+                            <strong>@d.Name</strong>
+                            <span class="badge @(d.IsActive ? "bg-success" : "bg-secondary") ms-2">
+                                @(d.IsActive ? "Actif" : "Inactif")
+                            </span>
+                            @if (!string.IsNullOrEmpty(d.AppliesToMachineCode))
+                            {
+                                <span class="badge bg-info ms-1">@d.AppliesToMachineCode</span>
+                            }
+                        </span>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-info" @onclick="() => SelectDefinition(d)">Items</button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteDef(d)">🗑</button>
+                        </div>
+                    </div>
+                    @if (_selectedDef?.SummaryId == d.SummaryId)
+                    {
+                        <div class="card-body p-2">
+                            @if (d.Items.Count == 0)
+                            {
+                                <p class="text-muted small mb-1">Aucun item.</p>
+                            }
+                            else
+                            {
+                                <table class="table table-dark table-sm mb-2">
+                                    <thead><tr><th>Field</th><th>Agg.</th><th>NodeId</th><th>Unit</th><th></th></tr></thead>
+                                    <tbody>
+                                        @foreach (var it in d.Items)
+                                        {
+                                            <tr>
+                                                <td><code>@it.FieldName</code></td>
+                                                <td>@it.Aggregation</td>
+                                                <td><small class="text-muted">@it.TagNodeId</small></td>
+                                                <td>@it.Unit</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-danger py-0"
+                                                            @onclick="() => DeleteItem(d.SummaryId, it.ItemId)">×</button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
+                            <button class="btn btn-sm btn-outline-primary" @onclick="NewItem">+ Item</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@* ── Create Definition form ─────────────────────────────────────────────────── *@
+@if (_defForm is not null)
+{
+    <hr />
+    <h5>Créer une Définition</h5>
+    <div class="row g-3">
+        <div class="col-md-5">
+            <label class="form-label">Nom</label>
+            <input class="form-control" @bind="_defForm.Name" placeholder="Résumé Shift Matin" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Machine (optionnel)</label>
+            <select class="form-select" @bind="_defForm.AppliesToMachineCode">
+                <option value="">-- Toutes les machines --</option>
+                @foreach (var m in _machines)
+                {
+                    <option value="@m.MachineCode">@m.MachineCode — @m.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="defActive" @bind="_defForm.IsActive" />
+                <label class="form-check-label" for="defActive">Actif</label>
+            </div>
+        </div>
+    </div>
+    <div class="d-flex gap-2 mt-3">
+        <button class="btn btn-primary" @onclick="SaveDef">Enregistrer</button>
+        <button class="btn btn-outline-light" @onclick="() => _defForm = null">Annuler</button>
+    </div>
+}
+
+@* ── Add Item form ───────────────────────────────────────────────────────────── *@
+@if (_itemForm is not null && _selectedDef is not null)
+{
+    <hr />
+    <h5>Ajouter un Item à <em>@_selectedDef.Name</em></h5>
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label">Nom du champ</label>
+            <input class="form-control" @bind="_itemForm.FieldName" placeholder="VitesseMoyenne" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Source</label>
+            <select class="form-select" @bind="_itemForm.SourceType">
+                <option>Tag</option>
+                <option>Constant</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Agrégation</label>
+            <select class="form-select" @bind="_itemForm.Aggregation">
+                <option>Sum</option>
+                <option>Average</option>
+                <option>Max</option>
+                <option>Min</option>
+                <option>Last</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Scope</label>
+            <select class="form-select" @bind="_itemForm.Scope">
+                <option>Run</option>
+                <option>Last</option>
+                <option>LookbackWindow</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Unité</label>
+            <input class="form-control" @bind="_itemForm.Unit" placeholder="m/min" />
+        </div>
+    </div>
+    <div class="row g-3 mt-1">
+        <div class="col-md-6">
+            <label class="form-label">Tag Node Id</label>
+            <input class="form-control font-monospace" @bind="_itemForm.TagNodeId" placeholder="ns=2;i=2001" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">LookbackMin</label>
+            <input class="form-control" type="number" @bind="_itemForm.LookbackMinutes" />
+        </div>
+    </div>
+    <div class="d-flex gap-2 mt-3">
+        <button class="btn btn-primary" @onclick="SaveItem">Ajouter</button>
+        <button class="btn btn-outline-light" @onclick="() => _itemForm = null">Annuler</button>
+    </div>
+}
+
+@code {
+    private List<AnalyticsSummaryDefDto>? _defs;
+    private List<MachineDto> _machines = new();
+    private AnalyticsSummaryDefDto? _selectedDef;
+    private AnalyticsSummaryDefCreateDto? _defForm;
+    private AnalyticsSummaryItemCreateDto? _itemForm;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        _error = null;
+        try
+        {
+            _machines = await MachinesApi.GetAllAsync(true) ?? [];
+            _defs = await AnalyticsApi.GetDefinitionsAsync() ?? [];
+            // Refresh selected def if any
+            if (_selectedDef is not null)
+                _selectedDef = _defs.FirstOrDefault(d => d.SummaryId == _selectedDef.SummaryId);
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private void NewDefinition()
+    {
+        _itemForm = null;
+        _defForm = new AnalyticsSummaryDefCreateDto { IsActive = true };
+    }
+
+    private async Task SaveDef()
+    {
+        if (_defForm is null) return;
+        _error = null;
+        try
+        {
+            await AnalyticsApi.CreateDefinitionAsync(_defForm);
+            _defForm = null;
+            await Load();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task DeleteDef(AnalyticsSummaryDefDto d)
+    {
+        _error = null;
+        try
+        {
+            await AnalyticsApi.DeleteDefinitionAsync(d.SummaryId);
+            if (_selectedDef?.SummaryId == d.SummaryId) _selectedDef = null;
+            await Load();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private void SelectDefinition(AnalyticsSummaryDefDto d)
+    {
+        _selectedDef = _selectedDef?.SummaryId == d.SummaryId ? null : d;
+        _itemForm = null;
+    }
+
+    private void NewItem() => _itemForm = new AnalyticsSummaryItemCreateDto
+    {
+        SourceType = "Tag",
+        Aggregation = "Average",
+        Scope = "Run"
+    };
+
+    private async Task SaveItem()
+    {
+        if (_itemForm is null || _selectedDef is null) return;
+        _error = null;
+        try
+        {
+            await AnalyticsApi.AddItemAsync(_selectedDef.SummaryId, _itemForm);
+            _itemForm = null;
+            await Load();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    private async Task DeleteItem(int defId, int itemId)
+    {
+        _error = null;
+        try
+        {
+            await AnalyticsApi.DeleteItemAsync(defId, itemId);
+            await Load();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+}

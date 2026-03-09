@@ -1,0 +1,137 @@
+@page "/"
+@implements IDisposable
+@using Mes.Opc.Contracts.Dtos
+@inject mes_opc_ui.Services.UiConfigurationService Ui
+@inject mes_opc_ui.Services.RealtimeHubService Hub
+@inject mes_opc_ui.Services.WidgetValueStore Store
+@inject HttpClient Http
+@inject mes_opc_ui.Services.ClientEndpoints Endpoints
+@inject NavigationManager NavigationManager
+
+<h2 class="mb-4">Dynamic Dashboard</h2>
+
+<div class="mb-3">
+    <span class="badge @(Hub.IsConnected ? "bg-success" : "bg-secondary")">
+        Realtime: @(Hub.IsConnected ? "Connected" : "Disconnected")
+    </span>
+    @if (!string.IsNullOrWhiteSpace(_rtError) || !string.IsNullOrWhiteSpace(Hub.LastError))
+    {
+        <span class="badge bg-danger ms-2">@(_rtError ?? Hub.LastError)</span>
+        <button class="btn btn-sm btn-outline-primary ms-2" @onclick="Reconnect">Reconnect</button>
+    }
+</div>
+
+@if (_loading)
+{
+    <div class="alert alert-info">Loading dashboard configuration…</div>
+}
+else if (_dashboard is null)
+{
+    <div class="alert alert-warning">
+        No dashboard found in SQL.
+        <div class="small mt-2">Run the SQL script <code>05_Tools/Mes.Opc.Admin.Seed/sql/ui_schema_and_seed.sql</code> to create a default dashboard.</div>
+    </div>
+}
+else
+{
+    foreach (var zone in _dashboard.Zones)
+    {
+        <section class="zone-card mb-4">
+            <div class="zone-title">@zone.Title</div>
+            <div class="row g-3">
+                @foreach (var widget in zone.Widgets)
+                {
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <WidgetRenderer Widget="widget" />
+
+                    </div>
+                }
+            </div>
+        </section>
+    }
+}
+
+@code {
+    private bool _loading = true;
+    private DashboardDto? _dashboard;
+    private bool _hubStarted;
+    private string? _rtError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Re-render whenever Store values change
+        Store.Changed += OnStoreChanged;
+        Hub.StateChanged += OnHubStateChanged;
+        Hub.WidgetUpdated += Store.OnWidgetUpdate;
+        try
+        {
+            _dashboard = await Ui.GetDefaultDashboardAsync();
+
+            if (_dashboard is not null)
+            {
+                // Build fast routing maps (Widget <-> Tag) in memory
+                Store.Configure(_dashboard);
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Démarrer une fois, dès que le dashboard est chargé (peu importe firstRender)
+        if (_hubStarted || _dashboard is null)
+            return;
+
+        try
+        {
+            var baseUrl = Endpoints.RealtimeBaseUrl;
+            if (string.IsNullOrWhiteSpace(baseUrl))
+                throw new InvalidOperationException("RealtimeBaseUrl is not set. Check wwwroot/appsettings.json (RealtimeBaseUrl / ApiBaseUrl).");
+
+            await Hub.StartAsync(baseUrl);
+
+            var widgetIds = Store.GetWidgetsToSubscribe(_dashboard);
+            if (widgetIds.Count > 0)
+                await Hub.JoinWidgetsAsync(widgetIds);
+            else
+            {
+                var machineCodes = Store.GetMachinesToSubscribe(_dashboard);
+                if (machineCodes.Count > 0)
+                    await Hub.JoinMachinesAsync(machineCodes);
+            }
+
+            _hubStarted = true;
+            _rtError = null;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _rtError = ex.GetType().Name;
+            Console.Error.WriteLine(ex.ToString());
+            StateHasChanged();
+        }
+    }
+
+
+    private async Task Reconnect()
+    {
+        _hubStarted = false;
+        _rtError = null;
+        await InvokeAsync(StateHasChanged);
+        // Let OnAfterRenderAsync retry
+    }
+
+    private void OnStoreChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnHubStateChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Hub.WidgetUpdated -= Store.OnWidgetUpdate;
+        Store.Changed -= OnStoreChanged;
+        Hub.StateChanged -= OnHubStateChanged;
+    }
+}

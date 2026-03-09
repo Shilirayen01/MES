@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    This project contains the runtime layer for the MES OPC acquisition service.  Its
+    responsibility is to connect to one or more OPC UA endpoints, subscribe to
+    configured nodes, publish all incoming tag values on an internal bus and
+    persist those values to a relational database.  It is intentionally
+    separated from the Web layer so that it can run as a standalone service and
+    scale independently from any API or user interface.
+  -->
+
+  <PropertyGroup>
+    <!-- Target .NET 8 for long‑term support and modern API surface -->
+    <TargetFramework>net8.0</TargetFramework>
+    <!-- Enable nullable reference types throughout the project -->
+    <Nullable>enable</Nullable>
+    <!-- Produce deterministic builds for reproducibility -->
+    <Deterministic>true</Deterministic>
+    <!-- Build as an executable since this project contains top‑level statements -->
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <!--
+    Package references needed by the runtime.  These packages are used at
+    compile‑time and, if restored, at runtime to provide logging, hosting,
+    data access and OPC UA client functionality.  When consuming this project
+    outside of the training environment be sure to restore these packages via
+    your NuGet feed.
+  -->
+  <ItemGroup>
+    <!-- Generic host for background services -->
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.1" />
+    <!-- Logging abstractions and console provider -->
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.1" />
+    <!-- Dapper micro‑ORM for lightweight data access -->
+    <PackageReference Include="Dapper" Version="2.1.66" />
+    <!-- SQL Server client library -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.0-preview3.25342.7" />
+    <!-- OPC UA .NET Standard client library -->
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua" Version="1.5.378.65" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="appsettings.Development.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!--
+    When building this project in a solution you can include references to
+    shared libraries such as Mes.Opc.Contracts or Mes.Opc.Domain if required.
+    Currently the runtime project has no direct dependency on those layers.
+  -->
+
+</Project>

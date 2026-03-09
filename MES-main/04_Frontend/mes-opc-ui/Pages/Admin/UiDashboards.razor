@@ -1,0 +1,215 @@
+﻿@page "/admin/ui-dashboards"
+@using mes_opc_ui.Services.AdminApi
+@using Microsoft.AspNetCore.Components.Forms
+@inject UiAdminApiClient Api
+@inject NavigationManager Nav
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+        <h3 class="mb-0">UI Dashboards</h3>
+        <small class="text-muted">Gestion des dashboards (défaut, création, suppression)</small>
+    </div>
+    <button class="btn btn-primary" @onclick="New"><i class="bi bi-plus-lg"></i> Nouveau</button>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Error))
+{
+    <div class="alert alert-danger">@Error</div>
+}
+
+@if (Items is null)
+{
+    <div class="text-muted">Chargement...</div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var d in Items.OrderByDescending(x => x.IsDefault).ThenBy(x => x.Name))
+        {
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="me-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <h5 class="card-title mb-0">@d.Name</h5>
+                                    @if (d.IsDefault)
+                                    {
+                                        <span class="badge text-bg-success">Default</span>
+                                    }
+                                </div>
+                                <div class="text-muted small mt-1" style="min-height: 2.4em;">
+                                    @(!string.IsNullOrWhiteSpace(d.Description) ? d.Description : "—")
+                                </div>
+                            </div>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    Actions
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><button class="dropdown-item" @onclick="() => Open(d.Id)">Ouvrir</button></li>
+                                    <li><button class="dropdown-item" @onclick="() => Edit(d)">Modifier</button></li>
+                                    <li><button class="dropdown-item" @onclick="() => SetDefault(d.Id)">Définir défaut</button></li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                    <li><button class="dropdown-item text-danger" @onclick="() => AskDelete(d)">Supprimer</button></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 d-flex gap-2">
+                            <button class="btn btn-outline-primary w-100" @onclick="() => Open(d.Id)">Gérer (Zones/Widgets)</button>
+                            <button class="btn btn-outline-secondary" @onclick="() => Edit(d)">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-footer small text-muted">
+                        Created: @d.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@* Modal Create/Edit *@
+@if (Form is not null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(IsEdit ? "Modifier Dashboard" : "Créer Dashboard")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+
+                <EditForm Model="Form" OnValidSubmit="Save">
+                    <DataAnnotationsValidator />
+                    <div class="modal-body">
+                        <ValidationSummary />
+
+                        <div class="mb-2">
+                            <label class="form-label">Name</label>
+                            <InputText class="form-control" @bind-Value="Form.Name" />
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label">Description</label>
+                            <InputText class="form-control" @bind-Value="Form.Description" />
+                        </div>
+
+                        <div class="form-check mt-2">
+                            <InputCheckbox class="form-check-input" @bind-Value="Form.IsDefault" />
+                            <label class="form-check-label">Default</label>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" type="button" @onclick="CloseModal">Annuler</button>
+                        <button class="btn btn-primary" type="submit">Enregistrer</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@* Modal confirm delete *@
+@if (DeleteCandidate is not null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">Supprimer Dashboard</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDelete"></button>
+                </div>
+                <div class="modal-body">
+                    Confirmer suppression de : <strong>@DeleteCandidate.Name</strong> ?
+                    <div class="text-muted small mt-2">Zones / Widgets / Bindings seront supprimés aussi.</div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseDelete">Annuler</button>
+                    <button class="btn btn-danger" @onclick="ConfirmDelete">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<UiDashboardDto>? Items;
+    private string? Error;
+
+    private UiDashboardCreateDto? Form;
+    private bool IsEdit;
+    private Guid EditId;
+
+    private UiDashboardDto? DeleteCandidate;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        Error = null;
+        Items = null;
+        try { Items = await Api.GetDashboardsAsync() ?? []; }
+        catch (Exception ex) { Error = ex.Message; Items = []; }
+    }
+
+    private void Open(Guid id) => Nav.NavigateTo($"/admin/ui-dashboards/{id}");
+
+    private void New()
+    {
+        IsEdit = false;
+        EditId = Guid.Empty;
+        Form = new UiDashboardCreateDto();
+    }
+
+    private void Edit(UiDashboardDto d)
+    {
+        IsEdit = true;
+        EditId = d.Id;
+        Form = new UiDashboardCreateDto { Name = d.Name, Description = d.Description, IsDefault = d.IsDefault };
+    }
+
+    private async Task Save()
+    {
+        if (Form is null) return;
+
+        try
+        {
+            if (!IsEdit)
+                await Api.CreateDashboardAsync(Form);
+            else
+                await Api.UpdateDashboardAsync(EditId, new UiDashboardUpdateDto { Name = Form.Name, Description = Form.Description, IsDefault = Form.IsDefault });
+
+            CloseModal();
+            await Load();
+        }
+        catch (Exception ex) { Error = ex.Message; }
+    }
+
+    private async Task SetDefault(Guid id)
+    {
+        try { await Api.SetDefaultDashboardAsync(id); await Load(); }
+        catch (Exception ex) { Error = ex.Message; }
+    }
+
+    private void CloseModal() => Form = null;
+
+    private void AskDelete(UiDashboardDto d) => DeleteCandidate = d;
+    private void CloseDelete() => DeleteCandidate = null;
+
+    private async Task ConfirmDelete()
+    {
+        if (DeleteCandidate is null) return;
+        try
+        {
+            await Api.DeleteDashboardAsync(DeleteCandidate.Id);
+            DeleteCandidate = null;
+            await Load();
+        }
+        catch (Exception ex) { Error = ex.Message; }
+    }
+}
