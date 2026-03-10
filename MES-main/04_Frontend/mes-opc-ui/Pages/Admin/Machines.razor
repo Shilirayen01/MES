@@ -5,145 +5,503 @@
 @inject OpcEndpointsApiClient EndpointsApi
 @inject NavigationManager Nav
 
-<h3>Machines</h3>
+<style>
+    .mc-page {
+        --bg-card:         #161b22;
+        --bg-elevated:     #1c2128;
+        --border:          #21262d;
+        --border-bright:   #30363d;
+        --accent-blue:     #238be6;
+        --accent-blue-dim: rgba(35, 139, 230, 0.15);
+        --green-badge-bg:  #1f8a5e;
+        --tag-bg:          #122535;
+        --tag-txt:         #58c4dc;
+        --tag-border:      #1d4a65;
+        --scope-pink:      #e879a0;
+        --red:             #da3633;
+        --red-dim:         rgba(218, 54, 51, 0.15);
+        --orange:          #d97706;
+        --orange-dim:      rgba(217,119,6,0.12);
+        --text-primary:    #e6edf3;
+        --text-secondary:  #7d8590;
+        --text-muted:      #3d444d;
+        font-family: 'DM Sans', sans-serif;
+        color: var(--text-primary);
+    }
 
-<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-    <button class="btn btn-sm btn-primary" @onclick="New">+ Nouvelle Machine</button>
-    <label class="form-check form-check-inline mb-0">
-        <input class="form-check-input" type="checkbox" @bind="ShowOnlyActive" />
-        <span class="form-check-label">Afficher seulement actifs</span>
-    </label>
-    <button class="btn btn-sm btn-outline-light" @onclick="Load">Rafraîchir</button>
-</div>
+    /* ── Header ── */
+    .mc-page .page-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        margin-bottom: 28px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+    }
+    .mc-page .page-header::after {
+        content: '';
+        position: absolute;
+        bottom: -1px; left: 0;
+        width: 120px; height: 1px;
+        background: linear-gradient(90deg, var(--accent-blue), transparent);
+    }
+    .mc-page .page-header h3 {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.3px;
+        margin: 0 0 4px 0;
+    }
+    .mc-page .page-header p {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin: 0;
+    }
 
-@if (Error is not null)
-{
-    <div style="color:red">@Error</div>
-}
+    /* ── Toolbar ── */
+    .mc-page .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+    .mc-page .toolbar-sep {
+        width: 1px;
+        height: 24px;
+        background: var(--border-bright);
+    }
+    .mc-page .filter-toggle {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        user-select: none;
+        padding: 5px 10px;
+        border-radius: 6px;
+        border: 1px solid var(--border-bright);
+        background: transparent;
+        transition: all 0.15s;
+        font-family: inherit;
+    }
+    .mc-page .filter-toggle:hover { color: var(--text-primary); border-color: var(--accent-blue); background: var(--accent-blue-dim); }
+    .mc-page .filter-toggle input[type="checkbox"] {
+        accent-color: var(--accent-blue);
+        width: 14px; height: 14px;
+        cursor: pointer;
+    }
 
-@if (Items is null || Endpoints is null)
-{
-    <p>Chargement...</p>
-}
-else
-{
-    <div class="table-responsive">
-    <table class="table table-dark table-striped table-hover align-middle">
-        <thead>
-        <tr>
-            <th>Code</th>
-            <th>Name</th>
-            <th>Line</th>
-            <th>EndpointId</th>
-            <th>Active</th>
-            <th></th>
-        </tr>
-        </thead>
-        <tbody>
-        @foreach (var m in Items)
-        {
-            <tr>
-                <td>@m.MachineCode</td>
-                <td>@m.Name</td>
-                <td>@m.LineCode</td>
-                <td>@m.OpcEndpointId</td>
-                <td>@(m.IsActive ? "Yes" : "No")</td>
-                <td>
-                    <button class="btn btn-sm btn-outline-info" @onclick="() => Edit(m)">Edit</button>
-                    <button class="btn btn-sm btn-outline-secondary ms-2" @onclick="() => GoMappings(m)">TagMappings</button>
-                    <button class="btn btn-sm btn-outline-warning ms-2" @onclick="() => Deactivate(m)">Désactiver</button>
-                </td>
-            </tr>
-        }
-        </tbody>
-    </table>
+    /* ── Buttons ── */
+    .mc-page .mc-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 14px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        border: 1px solid transparent;
+        font-family: inherit;
+        line-height: 1.4;
+    }
+    .mc-page .mc-btn-primary { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+    .mc-page .mc-btn-primary:hover { background: #3a9ef5; box-shadow: 0 0 14px rgba(35,139,230,0.35); transform: translateY(-1px); }
+    .mc-page .mc-btn-ghost { background: transparent; color: var(--text-secondary); border-color: var(--border-bright); }
+    .mc-page .mc-btn-ghost:hover { color: var(--text-primary); border-color: var(--accent-blue); background: var(--accent-blue-dim); }
+    .mc-page .mc-btn-sm { font-size: 11px; padding: 3px 10px; }
+    .mc-page .mc-btn-outline { background: transparent; color: var(--accent-blue); border-color: var(--accent-blue); }
+    .mc-page .mc-btn-outline:hover { background: var(--accent-blue-dim); }
+    .mc-page .mc-btn-tag { background: transparent; color: var(--tag-txt); border-color: var(--tag-border); }
+    .mc-page .mc-btn-tag:hover { background: var(--tag-bg); }
+    .mc-page .mc-btn-warn { background: transparent; color: var(--orange); border-color: var(--orange); }
+    .mc-page .mc-btn-warn:hover { background: var(--orange-dim); }
+
+    /* ── Alert ── */
+    .mc-page .mc-alert-danger {
+        background: rgba(218,54,51,0.1);
+        border: 1px solid rgba(218,54,51,0.3);
+        color: #f87171;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 13px;
+        margin-bottom: 16px;
+    }
+    .mc-page .loading-text { color: var(--text-secondary); font-size: 13px; }
+
+    /* ── Table Card ── */
+    .mc-page .table-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+    .mc-page .table-scroll { overflow-x: auto; }
+    .mc-page .mc-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    .mc-page .mc-table th {
+        text-align: left;
+        padding: 10px 16px;
+        color: var(--text-secondary);
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-elevated);
+        white-space: nowrap;
+    }
+    .mc-page .mc-table td {
+        padding: 11px 16px;
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+    }
+    .mc-page .mc-table tbody tr:last-child td { border-bottom: none; }
+    .mc-page .mc-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+    .mc-page .cell-code {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--tag-txt);
+    }
+    .mc-page .cell-name { font-weight: 500; }
+    .mc-page .cell-line {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        color: var(--scope-pink);
+    }
+    .mc-page .cell-endpoint {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        color: var(--text-secondary);
+    }
+    .mc-page .badge-active {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 9px;
+        border-radius: 4px;
+        background: var(--green-badge-bg);
+        color: #fff;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+    .mc-page .badge-active::before {
+        content: '';
+        width: 5px; height: 5px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.5);
+        animation: mcPulse 2s ease infinite;
+    }
+    .mc-page .badge-inactive {
+        display: inline-flex;
+        padding: 2px 9px;
+        border-radius: 4px;
+        background: rgba(125,133,144,0.1);
+        border: 1px solid var(--border-bright);
+        color: var(--text-secondary);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+    @@keyframes mcPulse {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.4; }
+    }
+    .mc-page .cell-actions { display: flex; gap: 6px; white-space: nowrap; }
+
+    /* ── Inline Form Panel ── */
+    .mc-page .form-panel {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 24px;
+        animation: mcFadeUp 0.25s ease;
+    }
+    @@keyframes mcFadeUp {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .mc-page .form-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 13px 20px;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-elevated);
+    }
+    .mc-page .form-panel-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .mc-page .form-panel-title .edit-code {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        color: var(--tag-txt);
+        background: var(--tag-bg);
+        border: 1px solid var(--tag-border);
+        padding: 1px 7px;
+        border-radius: 4px;
+    }
+    .mc-page .form-panel-body {
+        padding: 20px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 16px;
+    }
+    .mc-page .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+    .mc-page .form-group label {
+        font-size: 11px;
+        color: var(--text-secondary);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+    .mc-page .mc-input,
+    .mc-page .mc-select {
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-bright);
+        color: var(--text-primary);
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 13px;
+        font-family: inherit;
+        width: 100%;
+        transition: border-color 0.15s;
+    }
+    .mc-page .mc-input:focus,
+    .mc-page .mc-select:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 0 2px var(--accent-blue-dim);
+    }
+    .mc-page .mc-select option { background: #1c2128; }
+    .mc-page .form-check-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-top: 22px;
+    }
+    .mc-page .form-check-row input[type="checkbox"] {
+        accent-color: var(--accent-blue);
+        width: 15px; height: 15px;
+        cursor: pointer;
+    }
+    .mc-page .form-check-row label {
+        font-size: 13px;
+        color: var(--text-primary);
+        cursor: pointer;
+    }
+    .mc-page .form-panel-footer {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 20px;
+        border-top: 1px solid var(--border);
+    }
+    .mc-page .validation-errors {
+        background: var(--red-dim);
+        border: 1px solid rgba(218,54,51,0.3);
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 12px;
+        color: #f87171;
+        grid-column: 1 / -1;
+    }
+</style>
+
+<div class="mc-page">
+
+    @* ── Page Header ── *@
+    <div class="page-header">
+        <div>
+            <h3>Machines</h3>
+            <p>Gestion des machines OPC-UA (création, modification, désactivation)</p>
+        </div>
     </div>
-}
 
-@if (FormCreate is not null)
-{
-    <hr />
-    <h4>Créer Machine</h4>
-    <EditForm Model="FormCreate" OnValidSubmit="SaveCreate">
-        <div>
-            <label>MachineCode</label><br />
-            <InputText class="form-control" @bind-Value="FormCreate.MachineCode" />
+    @* ── Toolbar ── *@
+    <div class="toolbar">
+        <button class="mc-btn mc-btn-primary" @onclick="New">+ Nouvelle Machine</button>
+        <div class="toolbar-sep"></div>
+        <label class="filter-toggle">
+            <input type="checkbox" @bind="ShowOnlyActive" @bind:after="Load" />
+            Afficher seulement actifs
+        </label>
+        <div class="toolbar-sep"></div>
+        <button class="mc-btn mc-btn-ghost" @onclick="Load">↻ Rafraîchir</button>
+    </div>
+
+    @if (Error is not null)
+    {
+        <div class="mc-alert-danger">@Error</div>
+    }
+
+    @* ── Table ── *@
+    @if (Items is null || Endpoints is null)
+    {
+        <p class="loading-text">Chargement...</p>
+    }
+    else
+    {
+        <div class="table-card">
+            <div class="table-scroll">
+                <table class="mc-table">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Nom</th>
+                            <th>Ligne</th>
+                            <th>Endpoint OPC</th>
+                            <th>Statut</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var m in Items)
+                        {
+                            <tr>
+                                <td><span class="cell-code">@m.MachineCode</span></td>
+                                <td><span class="cell-name">@m.Name</span></td>
+                                <td><span class="cell-line">@m.LineCode</span></td>
+                                <td><span class="cell-endpoint">@m.OpcEndpointId</span></td>
+                                <td>
+                                    @if (m.IsActive)
+                                    {
+                                        <span class="badge-active">Actif</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-inactive">Inactif</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="cell-actions">
+                                        <button class="mc-btn mc-btn-outline mc-btn-sm" @onclick="() => Edit(m)">✏ Edit</button>
+                                        <button class="mc-btn mc-btn-tag mc-btn-sm" @onclick="() => GoMappings(m)">⚙ TagMappings</button>
+                                        <button class="mc-btn mc-btn-warn mc-btn-sm" @onclick="() => Deactivate(m)">Désactiver</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
         </div>
+    }
 
-        <div style="margin-top:8px;">
-            <label>Name</label><br />
-            <InputText class="form-control" @bind-Value="FormCreate.Name" />
+    @* ── Form: Créer ── *@
+    @if (FormCreate is not null)
+    {
+        <div class="form-panel">
+            <div class="form-panel-header">
+                <div class="form-panel-title">+ Créer Machine</div>
+                <button class="mc-btn mc-btn-ghost mc-btn-sm" @onclick="Cancel">✕ Fermer</button>
+            </div>
+            <EditForm Model="FormCreate" OnValidSubmit="SaveCreate">
+                <DataAnnotationsValidator />
+                <div class="form-panel-body">
+                    <ValidationSummary class="validation-errors" />
+                    <div class="form-group">
+                        <label>Machine Code</label>
+                        <InputText class="mc-input" @bind-Value="FormCreate.MachineCode" placeholder="MC_01" />
+                    </div>
+                    <div class="form-group">
+                        <label>Nom</label>
+                        <InputText class="mc-input" @bind-Value="FormCreate.Name" placeholder="Nom de la machine" />
+                    </div>
+                    <div class="form-group">
+                        <label>Ligne</label>
+                        <InputText class="mc-input" @bind-Value="FormCreate.LineCode" placeholder="LIGNE_A" />
+                    </div>
+                    <div class="form-group">
+                        <label>Endpoint OPC</label>
+                        <select class="mc-select" @bind="FormCreate.OpcEndpointId">
+                            @foreach (var e in Endpoints ?? [])
+                            {
+                                <option value="@e.Id">@e.Id — @e.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-check-row">
+                        <InputCheckbox @bind-Value="FormCreate.IsActive" id="createActive" />
+                        <label for="createActive">Machine active</label>
+                    </div>
+                </div>
+                <div class="form-panel-footer">
+                    <button type="submit" class="mc-btn mc-btn-primary">Enregistrer</button>
+                    <button type="button" class="mc-btn mc-btn-ghost" @onclick="Cancel">Annuler</button>
+                </div>
+            </EditForm>
         </div>
+    }
 
-        <div style="margin-top:8px;">
-            <label>LineCode</label><br />
-            <InputText class="form-control" @bind-Value="FormCreate.LineCode" />
+    @* ── Form: Modifier ── *@
+    @if (FormUpdate is not null)
+    {
+        <div class="form-panel">
+            <div class="form-panel-header">
+                <div class="form-panel-title">
+                    ✏ Modifier Machine
+                    <span class="edit-code">@EditCode</span>
+                </div>
+                <button class="mc-btn mc-btn-ghost mc-btn-sm" @onclick="Cancel">✕ Fermer</button>
+            </div>
+            <EditForm Model="FormUpdate" OnValidSubmit="SaveUpdate">
+                <DataAnnotationsValidator />
+                <div class="form-panel-body">
+                    <ValidationSummary class="validation-errors" />
+                    <div class="form-group">
+                        <label>Nom</label>
+                        <InputText class="mc-input" @bind-Value="FormUpdate.Name" />
+                    </div>
+                    <div class="form-group">
+                        <label>Ligne</label>
+                        <InputText class="mc-input" @bind-Value="FormUpdate.LineCode" />
+                    </div>
+                    <div class="form-group">
+                        <label>Endpoint OPC</label>
+                        <select class="mc-select" @bind="FormUpdate.OpcEndpointId">
+                            @foreach (var e in Endpoints ?? [])
+                            {
+                                <option value="@e.Id">@e.Id — @e.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-check-row">
+                        <InputCheckbox @bind-Value="FormUpdate.IsActive" id="updateActive" />
+                        <label for="updateActive">Machine active</label>
+                    </div>
+                </div>
+                <div class="form-panel-footer">
+                    <button type="submit" class="mc-btn mc-btn-primary">Enregistrer</button>
+                    <button type="button" class="mc-btn mc-btn-ghost" @onclick="Cancel">Annuler</button>
+                </div>
+            </EditForm>
         </div>
+    }
 
-        <div style="margin-top:8px;">
-            <label>OpcEndpoint</label><br />
-            <select class="form-select" @bind="FormCreate.OpcEndpointId">
-                @foreach (var e in Endpoints)
-                {
-                    <option value="@e.Id">@e.Id - @e.Name</option>
-                }
-            </select>
-        </div>
-
-        <div style="margin-top:8px;">
-            <label>Active</label>
-            <InputCheckbox class="form-check-input" @bind-Value="FormCreate.IsActive" />
-        </div>
-
-
-
-        <div style="margin-top:12px;">
-            <button type="submit" class="btn btn-primary">Enregistrer</button>
-            <button type="button" class="btn btn-outline-light ms-2" @onclick="Cancel">Annuler</button>
-        </div>
-    </EditForm>
-}
-
-@if (FormUpdate is not null)
-{
-    <hr />
-    <h4>Modifier Machine (@EditCode)</h4>
-    <EditForm Model="FormUpdate" OnValidSubmit="SaveUpdate">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
-
-        <div>
-            <label>Name</label><br />
-            <InputText class="form-control" @bind-Value="FormUpdate.Name" />
-        </div>
-
-        <div style="margin-top:8px;">
-            <label>LineCode</label><br />
-            <InputText class="form-control" @bind-Value="FormUpdate.LineCode" />
-        </div>
-
-        <div style="margin-top:8px;">
-            <label>OpcEndpoint</label><br />
-            <select class="form-select" @bind="FormUpdate.OpcEndpointId">
-                @foreach (var e in Endpoints)
-                {
-                    <option value="@e.Id">@e.Id - @e.Name</option>
-                }
-            </select>
-        </div>
-
-        <div style="margin-top:8px;">
-            <label>Active</label>
-            <InputCheckbox class="form-check-input" @bind-Value="FormUpdate.IsActive" />
-        </div>
-
-
-        <div style="margin-top:12px;">
-            <button type="submit" class="btn btn-primary">Enregistrer</button>
-            <button type="button" class="btn btn-outline-light ms-2" @onclick="Cancel">Annuler</button>
-        </div>
-    </EditForm>
-}
+</div>
 
 @code {
     private List<MachineDto>? Items;
@@ -192,7 +550,6 @@ else
     {
         FormCreate = null;
         EditCode = m.MachineCode;
-
         FormUpdate = new MachineUpdateDto
         {
             Name = m.Name,
@@ -205,45 +562,25 @@ else
     private async Task SaveCreate()
     {
         if (FormCreate is null) return;
-        try
-        {
-            await MachinesApi.CreateAsync(FormCreate);
-            FormCreate = null;
-            await Load();
-        }
+        try { await MachinesApi.CreateAsync(FormCreate); FormCreate = null; await Load(); }
         catch (Exception ex) { Error = ex.Message; }
     }
 
     private async Task SaveUpdate()
     {
         if (FormUpdate is null) return;
-        try
-        {
-            await MachinesApi.UpdateAsync(EditCode, FormUpdate);
-            FormUpdate = null;
-            EditCode = "";
-            await Load();
-        }
+        try { await MachinesApi.UpdateAsync(EditCode, FormUpdate); FormUpdate = null; EditCode = ""; await Load(); }
         catch (Exception ex) { Error = ex.Message; }
     }
 
     private async Task Deactivate(MachineDto m)
     {
-        try
-        {
-            await MachinesApi.DeleteAsync(m.MachineCode);
-            await Load();
-        }
+        try { await MachinesApi.DeleteAsync(m.MachineCode); await Load(); }
         catch (Exception ex) { Error = ex.Message; }
     }
 
     private void GoMappings(MachineDto m)
         => Nav.NavigateTo($"/admin/machines/{Uri.EscapeDataString(m.MachineCode)}/tag-mappings");
 
-    private void Cancel()
-    {
-        FormCreate = null;
-        FormUpdate = null;
-        EditCode = "";
-    }
+    private void Cancel() { FormCreate = null; FormUpdate = null; EditCode = ""; }
 }

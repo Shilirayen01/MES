@@ -3,298 +3,772 @@
 @inject MachinesApiClient MachinesApi
 @inject CycleRulesApiClient CycleRulesApi
 
-<h3>Règles de Détection de Cycles</h3>
-<p class="text-muted small mb-3">Configurez comment le Worker détecte le début et la fin d'un cycle de production pour chaque machine.</p>
-
-@* ── Machine selector ──────────────────────────────────────────────────────── *@
-<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-    <select class="form-select w-auto" @bind="_selectedMachine" @bind:after="LoadRules">
-        <option value="">-- Sélectionner une machine --</option>
-        @foreach (var m in _machines)
-        {
-            <option value="@m.MachineCode">@m.MachineCode — @m.Name</option>
-        }
-    </select>
-    <button class="btn btn-sm btn-outline-light" @onclick="LoadRules">Rafraîchir</button>
-    @if (!string.IsNullOrEmpty(_selectedMachine))
-    {
-        <button class="btn btn-sm btn-primary" @onclick="NewRule">+ Nouvelle Règle</button>
+<style>
+    /* ── Variables (identical to Analytics page) ── */
+    .cr-page {
+        --bg-card:         #161b22;
+        --bg-elevated:     #1c2128;
+        --border:          #21262d;
+        --border-bright:   #30363d;
+        --accent-blue:     #238be6;
+        --accent-blue-dim: rgba(35, 139, 230, 0.15);
+        --green-badge-bg:  #1f8a5e;
+        --tag-bg:          #122535;
+        --tag-txt:         #58c4dc;
+        --tag-border:      #1d4a65;
+        --scope-pink:      #e879a0;
+        --red:             #da3633;
+        --red-dim:         rgba(218, 54, 51, 0.15);
+        --text-primary:    #e6edf3;
+        --text-secondary:  #7d8590;
+        --text-muted:      #3d444d;
+        font-family: 'DM Sans', sans-serif;
+        color: var(--text-primary);
     }
-</div>
 
-@if (_error is not null)
-{
-    <div class="alert alert-danger">@_error</div>
-}
+    /* ── Header ── */
+    .cr-page .page-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        margin-bottom: 28px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+    }
+    .cr-page .page-header::after {
+        content: '';
+        position: absolute;
+        bottom: -1px; left: 0;
+        width: 120px; height: 1px;
+        background: linear-gradient(90deg, var(--accent-blue), transparent);
+    }
+    .cr-page .page-header h3 {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.3px;
+        color: var(--text-primary);
+        margin: 0 0 4px 0;
+    }
+    .cr-page .page-header p {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 300;
+        margin: 0;
+    }
+    .cr-page .header-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
 
-@* ── Rules table (all columns) ─────────────────────────────────────────────── *@
-@if (_rules is not null && _rules.Count > 0)
-{
-    <div class="table-responsive mb-4">
-        <table class="table table-dark table-striped table-hover align-middle" style="font-size:0.85rem">
-            <thead>
-                <tr>
-                    <th>Id</th>
-                    <th>Scope</th>
-                    <th>Active</th>
-                    <th>Start Strategy</th>
-                    <th>Start NodeId</th>
-                    <th>Start Edge</th>
-                    <th>Start Value</th>
-                    <th>End Strategy</th>
-                    <th>End NodeId</th>
-                    <th>End Edge</th>
-                    <th>Fallback Strategy</th>
-                    <th>Fallback NodeId</th>
-                    <th>Abort NodeIds</th>
-                    <th>Debounce (ms)</th>
-                    <th>Min Cycle (s)</th>
-                    <th>Timeout (s)</th>
-                    <th>Epsilon</th>
-                    <th>TargetTolerance</th>
-                    <th>Valid. Speed NodeId</th>
-                    <th>Valid. Speed Min</th>
-                    <th>Valid. State NodeId</th>
-                    <th>Valid. State Value</th>
-                    <th>Recovery Strategy</th>
-                    <th>Recovery NodeId</th>
-                    <th>Recovery Delta</th>
-                    <th>Recovery Window (s)</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var r in _rules)
-                {
-                    <tr>
-                        <td>@r.Id</td>
-                        <td><code>@r.ScopeKey</code></td>
-                        <td>
-                            <span class="badge @(r.IsActive ? "bg-success" : "bg-secondary")">
-                                @(r.IsActive ? "Actif" : "Inactif")
-                            </span>
-                        </td>
-                        <td>@r.StartStrategy</td>
-                        <td><small class="text-white font-monospace">@r.StartNodeId</small></td>
-                        <td>@r.StartEdgeType</td>
-                        <td>@r.StartValue</td>
-                        <td>@r.EndPrimaryStrategy</td>
-                        <td><small class="text-white font-monospace">@r.EndPrimaryNodeId</small></td>
-                        <td>@r.EndPrimaryEdgeType</td>
-                        <td>@r.EndFallbackStrategy</td>
-                        <td><small class="text-white font-monospace">@r.EndFallbackNodeId</small></td>
-                        <td><small class="text-white">@r.AbortNodeIds</small></td>
-                        <td>@r.DebounceMs</td>
-                        <td>@r.MinCycleSeconds</td>
-                        <td>@r.TimeoutSeconds</td>
-                        <td>@r.Epsilon</td>
-                        <td>@r.TargetTolerance</td>
-                        <td><small class="text-white font-monospace">@r.ValidationSpeedNodeId</small></td>
-                        <td>@r.ValidationSpeedMin</td>
-                        <td><small class="text-white font-monospace">@r.ValidationStateNodeId</small></td>
-                        <td>@r.ValidationStateValue</td>
-                        <td>@r.RecoveryStrategy</td>
-                        <td><small class="text-white font-monospace">@r.RecoveryConfirmNodeId</small></td>
-                        <td>@r.RecoveryConfirmDelta</td>
-                        <td>@r.RecoveryConfirmWindowSeconds</td>
-                        <td class="text-nowrap">
-                            <button class="btn btn-sm btn-outline-info" @onclick="() => EditRule(r)">Edit</button>
-                            <button class="btn btn-sm btn-outline-danger ms-1" @onclick="() => DeleteRule(r)">Supprimer</button>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-}
-else if (_rules is not null && _rules.Count == 0 && !string.IsNullOrEmpty(_selectedMachine))
-{
-    <div class="alert alert-info">Aucune règle pour <strong>@_selectedMachine</strong>. Créez-en une ci-dessous.</div>
-}
+    /* ── Toolbar (machine selector row) ── */
+    .cr-page .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+    }
+    .cr-page .cr-select {
+        background: var(--bg-card);
+        border: 1px solid var(--border-bright);
+        color: var(--text-primary);
+        border-radius: 6px;
+        padding: 7px 12px;
+        font-size: 13px;
+        font-family: inherit;
+        min-width: 220px;
+        transition: border-color 0.15s;
+        cursor: pointer;
+    }
+    .cr-page .cr-select:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 0 2px var(--accent-blue-dim);
+    }
+    .cr-page .cr-select option { background: #1c2128; }
 
-@* ── Create / Edit form (all fields, grouped by section) ──────────────────── *@
-@if (_form is not null)
-{
-    <hr />
-    <h5>@(_editId is null ? "Créer une Règle" : $"Modifier Règle #{_editId}")</h5>
+    /* ── Buttons ── */
+    .cr-page .cr-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 15px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        border: 1px solid transparent;
+        line-height: 1.4;
+        font-family: inherit;
+    }
+    .cr-page .cr-btn-primary {
+        background: var(--accent-blue);
+        color: #fff;
+        border-color: var(--accent-blue);
+    }
+    .cr-page .cr-btn-primary:hover {
+        background: #3a9ef5;
+        box-shadow: 0 0 16px rgba(35,139,230,0.35);
+        transform: translateY(-1px);
+    }
+    .cr-page .cr-btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+        border-color: var(--border-bright);
+    }
+    .cr-page .cr-btn-ghost:hover {
+        color: var(--text-primary);
+        border-color: var(--accent-blue);
+        background: var(--accent-blue-dim);
+    }
+    .cr-page .cr-btn-outline {
+        background: transparent;
+        color: var(--accent-blue);
+        border-color: var(--accent-blue);
+        padding: 4px 12px;
+        font-size: 12px;
+    }
+    .cr-page .cr-btn-outline:hover {
+        background: var(--accent-blue-dim);
+    }
+    .cr-page .cr-btn-danger {
+        background: var(--red);
+        color: #fff;
+        border-color: var(--red);
+        padding: 4px 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    .cr-page .cr-btn-danger:hover {
+        background: #f04340;
+        border-color: #f04340;
+        box-shadow: 0 0 12px rgba(218,54,51,0.35);
+        transform: translateY(-1px);
+    }
 
-    @* ── Identity ─────────────────────────────────────────────────────────── *@
-    <h6 class="text-info mt-3">Identité</h6>
-    <div class="row g-3">
-        <div class="col-md-4">
-            <label class="form-label">Scope Key</label>
-            <input class="form-control" @bind="_form.ScopeKey" placeholder="default" />
+    /* ── Alert ── */
+    .cr-page .cr-alert-danger {
+        background: rgba(218,54,51,0.1);
+        border: 1px solid rgba(218,54,51,0.3);
+        color: #f87171;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 13px;
+        margin-bottom: 16px;
+    }
+    .cr-page .cr-alert-info {
+        background: var(--accent-blue-dim);
+        border: 1px solid rgba(35,139,230,0.25);
+        color: #7db8f0;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 13px;
+        margin-bottom: 16px;
+    }
+
+    /* ── Rules Table Card ── */
+    .cr-page .table-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 28px;
+        animation: crFadeUp 0.35s ease both;
+    }
+    .cr-page .table-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 13px 18px;
+        border-bottom: 1px solid var(--border);
+    }
+    .cr-page .table-card-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .cr-page .rules-count {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 10px;
+        background: var(--accent-blue-dim);
+        border: 1px solid rgba(35,139,230,0.2);
+        color: var(--accent-blue);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    @@keyframes crFadeUp {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Table ── */
+    .cr-page .cr-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+    }
+    .cr-page .cr-table th {
+        text-align: left;
+        padding: 9px 14px;
+        color: var(--text-secondary);
+        font-weight: 600;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+        background: var(--bg-elevated);
+    }
+    .cr-page .cr-table td {
+        padding: 10px 14px;
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+    .cr-page .cr-table tbody tr:last-child td { border-bottom: none; }
+    .cr-page .cr-table tbody tr:hover td {
+        background: rgba(35,139,230,0.04);
+    }
+
+    /* ── Table Scrollwrap ── */
+    .cr-page .table-scroll {
+        overflow-x: auto;
+    }
+    .cr-page .table-scroll::-webkit-scrollbar { height: 5px; }
+    .cr-page .table-scroll::-webkit-scrollbar-track { background: var(--bg-card); }
+    .cr-page .table-scroll::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+
+    /* ── Table cell types ── */
+    .cr-page .cell-id {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        color: var(--text-muted);
+        font-weight: 600;
+    }
+    .cr-page .cell-scope {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--scope-pink);
+    }
+    .cr-page .cell-nodeid {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        color: var(--text-primary);
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
+    }
+    .cr-page .cell-strategy {
+        font-size: 11px;
+        color: var(--tag-txt);
+        font-weight: 500;
+    }
+    .cr-page .cell-edge {
+        font-size: 11px;
+        color: var(--text-secondary);
+    }
+    .cr-page .cell-num {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        color: var(--text-secondary);
+        text-align: right;
+    }
+    .cr-page .cell-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+
+    /* ── Badges ── */
+    .cr-page .badge-actif {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 9px;
+        border-radius: 4px;
+        background: var(--green-badge-bg);
+        color: #fff;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+    }
+    .cr-page .badge-actif::before {
+        content: '';
+        width: 5px; height: 5px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.5);
+        animation: crPulse 2s ease infinite;
+    }
+    .cr-page .badge-inactif {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 9px;
+        border-radius: 4px;
+        background: #2d333b;
+        border: 1px solid var(--border-bright);
+        color: var(--text-secondary);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+    }
+
+    @@keyframes crPulse {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.4; }
+    }
+
+    /* ── Form Section ── */
+    .cr-page .form-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 22px 24px;
+        margin-bottom: 20px;
+        animation: crFadeUp 0.3s ease both;
+    }
+    .cr-page .form-card-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0 0 20px 0;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .cr-page .form-section-label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: var(--accent-blue);
+        margin: 20px 0 10px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .cr-page .form-section-label::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+    }
+    .cr-page .form-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+    .cr-page .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        flex: 1;
+        min-width: 130px;
+    }
+    .cr-page .form-group label {
+        font-size: 11px;
+        color: var(--text-secondary);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+    .cr-page .cr-input,
+    .cr-page .cr-form-select {
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-bright);
+        color: var(--text-primary);
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 13px;
+        font-family: inherit;
+        transition: border-color 0.15s;
+        width: 100%;
+    }
+    .cr-page .cr-input:focus,
+    .cr-page .cr-form-select:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 0 2px var(--accent-blue-dim);
+    }
+    .cr-page .cr-form-select option { background: #1c2128; }
+    .cr-page .cr-input.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .cr-page .form-check-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-top: 22px;
+    }
+    .cr-page .form-check-row input[type="checkbox"] {
+        width: 15px; height: 15px;
+        accent-color: var(--accent-blue);
+        cursor: pointer;
+    }
+    .cr-page .form-check-row label {
+        font-size: 13px;
+        color: var(--text-primary);
+        cursor: pointer;
+    }
+    .cr-page .form-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+    }
+
+    /* ── Empty state ── */
+    .cr-page .empty-state {
+        padding: 48px 24px;
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 13px;
+    }
+</style>
+
+<div class="cr-page">
+
+    @* ── Page Header ── *@
+    <div class="page-header">
+        <div>
+            <h3>Règles de Détection de Cycles</h3>
+            <p>Configurez comment le Worker détecte le début et la fin d'un cycle de production pour chaque machine.</p>
         </div>
-        <div class="col-md-2 d-flex align-items-end">
-            <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" id="chkActive" @bind="_form.IsActive" />
-                <label class="form-check-label" for="chkActive">Actif</label>
+    </div>
+
+    @* ── Toolbar ── *@
+    <div class="toolbar">
+        <select class="cr-select" @bind="_selectedMachine" @bind:after="LoadRules">
+            <option value="">-- Sélectionner une machine --</option>
+            @foreach (var m in _machines)
+            {
+                <option value="@m.MachineCode">@m.MachineCode — @m.Name</option>
+            }
+        </select>
+        <button class="cr-btn cr-btn-ghost" @onclick="LoadRules">↻ Rafraîchir</button>
+        @if (!string.IsNullOrEmpty(_selectedMachine))
+        {
+            <button class="cr-btn cr-btn-primary" @onclick="NewRule">+ Nouvelle Règle</button>
+        }
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="cr-alert-danger">@_error</div>
+    }
+
+    @* ── Rules Table ── *@
+    @if (_rules is not null && _rules.Count > 0)
+    {
+        <div class="table-card">
+            <div class="table-card-header">
+                <div class="table-card-title">
+                    Règles — <span style="color:var(--tag-txt)">@_selectedMachine</span>
+                    <span class="rules-count">@_rules.Count règle@(_rules.Count > 1 ? "s" : "")</span>
+                </div>
+            </div>
+            <div class="table-scroll">
+                <table class="cr-table">
+                    <thead>
+                        <tr>
+                            <th>Id</th>
+                            <th>Scope</th>
+                            <th>Active</th>
+                            <th>Start Strategy</th>
+                            <th>Start NodeId</th>
+                            <th>Start Edge</th>
+                            <th>Start Value</th>
+                            <th>End Strategy</th>
+                            <th>End NodeId</th>
+                            <th>End Edge</th>
+                            <th>Fallback Strategy</th>
+                            <th>Fallback NodeId</th>
+                            <th>Abort NodeIds</th>
+                            <th>Debounce (ms)</th>
+                            <th>Min Cycle (s)</th>
+                            <th>Timeout (s)</th>
+                            <th>Epsilon</th>
+                            <th>Tolerance</th>
+                            <th>Speed NodeId</th>
+                            <th>Speed Min</th>
+                            <th>State NodeId</th>
+                            <th>State Value</th>
+                            <th>Recovery</th>
+                            <th>Recovery NodeId</th>
+                            <th>Delta</th>
+                            <th>Window (s)</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in _rules)
+                        {
+                            <tr>
+                                <td><span class="cell-id">@r.Id</span></td>
+                                <td><span class="cell-scope">@r.ScopeKey</span></td>
+                                <td>
+                                    @if (r.IsActive)
+                                    {
+                                        <span class="badge-actif">Actif</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-inactif">Inactif</span>
+                                    }
+                                </td>
+                                <td><span class="cell-strategy">@r.StartStrategy</span></td>
+                                <td><span class="cell-nodeid">@r.StartNodeId</span></td>
+                                <td><span class="cell-edge">@r.StartEdgeType</span></td>
+                                <td><span class="cell-edge">@r.StartValue</span></td>
+                                <td><span class="cell-strategy">@r.EndPrimaryStrategy</span></td>
+                                <td><span class="cell-nodeid">@r.EndPrimaryNodeId</span></td>
+                                <td><span class="cell-edge">@r.EndPrimaryEdgeType</span></td>
+                                <td><span class="cell-strategy">@r.EndFallbackStrategy</span></td>
+                                <td><span class="cell-nodeid">@r.EndFallbackNodeId</span></td>
+                                <td><span class="cell-nodeid">@r.AbortNodeIds</span></td>
+                                <td><span class="cell-num">@r.DebounceMs</span></td>
+                                <td><span class="cell-num">@r.MinCycleSeconds</span></td>
+                                <td><span class="cell-num">@r.TimeoutSeconds</span></td>
+                                <td><span class="cell-num">@r.Epsilon</span></td>
+                                <td><span class="cell-num">@r.TargetTolerance</span></td>
+                                <td><span class="cell-nodeid">@r.ValidationSpeedNodeId</span></td>
+                                <td><span class="cell-num">@r.ValidationSpeedMin</span></td>
+                                <td><span class="cell-nodeid">@r.ValidationStateNodeId</span></td>
+                                <td><span class="cell-edge">@r.ValidationStateValue</span></td>
+                                <td><span class="cell-strategy">@r.RecoveryStrategy</span></td>
+                                <td><span class="cell-nodeid">@r.RecoveryConfirmNodeId</span></td>
+                                <td><span class="cell-num">@r.RecoveryConfirmDelta</span></td>
+                                <td><span class="cell-num">@r.RecoveryConfirmWindowSeconds</span></td>
+                                <td>
+                                    <div class="cell-actions">
+                                        <button class="cr-btn cr-btn-outline" @onclick="() => EditRule(r)">Edit</button>
+                                        <button class="cr-btn cr-btn-danger" @onclick="() => DeleteRule(r)">Supprimer</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
         </div>
-    </div>
+    }
+    else if (_rules is not null && _rules.Count == 0 && !string.IsNullOrEmpty(_selectedMachine))
+    {
+        <div class="table-card">
+            <div class="empty-state">
+                Aucune règle pour <strong style="color:var(--tag-txt)">@_selectedMachine</strong>. Créez-en une ci-dessous.
+            </div>
+        </div>
+    }
 
-    @* ── Start Detection ──────────────────────────────────────────────────── *@
-    <h6 class="text-info mt-3">Détection de Début</h6>
-    <div class="row g-3">
-        <div class="col-md-3">
-            <label class="form-label">Start Strategy</label>
-            <select class="form-select" @bind="_form.StartStrategy">
-                <option>EdgeOnBit</option>
-                <option>ValueEquals</option>
-                <option>CounterIncrease</option>
-                <option>LastChanged</option>
-            </select>
-        </div>
-        <div class="col-md-4">
-            <label class="form-label">Start NodeId</label>
-            <input class="form-control font-monospace" @bind="_form.StartNodeId" placeholder="ns=2;i=..." />
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Edge Type</label>
-            <select class="form-select" @bind="_form.StartEdgeType">
-                <option value="">—</option>
-                <option>Rising</option>
-                <option>Falling</option>
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Start Value</label>
-            <input class="form-control" @bind="_form.StartValue" placeholder="optionnel" />
-        </div>
-    </div>
+    @* ── Create / Edit Form ── *@
+    @if (_form is not null)
+    {
+        <div class="form-card">
+            <div class="form-card-title">
+                @(_editId is null ? "➕ Créer une Règle" : $"✏️ Modifier Règle #{_editId}")
+            </div>
 
-    @* ── End Detection (Primary) ──────────────────────────────────────────── *@
-    <h6 class="text-info mt-3">Détection de Fin (Primaire)</h6>
-    <div class="row g-3">
-        <div class="col-md-3">
-            <label class="form-label">End Strategy (primary)</label>
-            <select class="form-select" @bind="_form.EndPrimaryStrategy">
-                <option>EdgeOnBit</option>
-                <option>LastChanged</option>
-                <option>ValueEquals</option>
-                <option>CounterIncrease</option>
-            </select>
-        </div>
-        <div class="col-md-4">
-            <label class="form-label">End NodeId</label>
-            <input class="form-control font-monospace" @bind="_form.EndPrimaryNodeId" placeholder="ns=2;i=..." />
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Edge Type</label>
-            <select class="form-select" @bind="_form.EndPrimaryEdgeType">
-                <option value="">—</option>
-                <option>Rising</option>
-                <option>Falling</option>
-            </select>
-        </div>
-    </div>
+            @* Identity *@
+            <div class="form-section-label">Identité</div>
+            <div class="form-row">
+                <div class="form-group" style="flex:2;">
+                    <label>Scope Key</label>
+                    <input class="cr-input mono" @bind="_form.ScopeKey" placeholder="default" />
+                </div>
+                <div class="form-group" style="flex:0;min-width:80px;">
+                    <label>&nbsp;</label>
+                    <div class="form-check-row">
+                        <input type="checkbox" id="chkActive" @bind="_form.IsActive" />
+                        <label for="chkActive">Actif</label>
+                    </div>
+                </div>
+            </div>
 
-    @* ── End Detection (Fallback) ─────────────────────────────────────────── *@
-    <h6 class="text-info mt-3">Détection de Fin (Fallback)</h6>
-    <div class="row g-3">
-        <div class="col-md-3">
-            <label class="form-label">Fallback Strategy</label>
-            <select class="form-select" @bind="_form.EndFallbackStrategy">
-                <option value="">— Aucun —</option>
-                <option>EdgeOnBit</option>
-                <option>LastChanged</option>
-                <option>ValueEquals</option>
-            </select>
-        </div>
-        <div class="col-md-4">
-            <label class="form-label">Fallback NodeId</label>
-            <input class="form-control font-monospace" @bind="_form.EndFallbackNodeId" placeholder="ns=2;i=..." />
-        </div>
-    </div>
+            @* Start Detection *@
+            <div class="form-section-label">Détection de Début</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Start Strategy</label>
+                    <select class="cr-form-select" @bind="_form.StartStrategy">
+                        <option>EdgeOnBit</option>
+                        <option>ValueEquals</option>
+                        <option>CounterIncrease</option>
+                        <option>LastChanged</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:3;">
+                    <label>Start NodeId</label>
+                    <input class="cr-input mono" @bind="_form.StartNodeId" placeholder="ns=2;i=..." />
+                </div>
+                <div class="form-group">
+                    <label>Edge Type</label>
+                    <select class="cr-form-select" @bind="_form.StartEdgeType">
+                        <option value="">—</option>
+                        <option>Rising</option>
+                        <option>Falling</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Start Value</label>
+                    <input class="cr-input" @bind="_form.StartValue" placeholder="optionnel" />
+                </div>
+            </div>
 
-    @* ── Abort ─────────────────────────────────────────────────────────────── *@
-    <h6 class="text-info mt-3">Annulation (Abort)</h6>
-    <div class="row g-3">
-        <div class="col-md-8">
-            <label class="form-label">Abort NodeIds <small class="text-muted">(séparés par ;)</small></label>
-            <input class="form-control font-monospace" @bind="_form.AbortNodeIds" placeholder="ns=2;i=100;ns=2;i=200" />
-        </div>
-    </div>
+            @* End Detection Primary *@
+            <div class="form-section-label">Détection de Fin — Primaire</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>End Strategy</label>
+                    <select class="cr-form-select" @bind="_form.EndPrimaryStrategy">
+                        <option>EdgeOnBit</option>
+                        <option>LastChanged</option>
+                        <option>ValueEquals</option>
+                        <option>CounterIncrease</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:3;">
+                    <label>End NodeId</label>
+                    <input class="cr-input mono" @bind="_form.EndPrimaryNodeId" placeholder="ns=2;i=..." />
+                </div>
+                <div class="form-group">
+                    <label>Edge Type</label>
+                    <select class="cr-form-select" @bind="_form.EndPrimaryEdgeType">
+                        <option value="">—</option>
+                        <option>Rising</option>
+                        <option>Falling</option>
+                    </select>
+                </div>
+            </div>
 
-    @* ── Timing ────────────────────────────────────────────────────────────── *@
-    <h6 class="text-info mt-3">Timing</h6>
-    <div class="row g-3">
-        <div class="col-md-3">
-            <label class="form-label">Debounce (ms)</label>
-            <input class="form-control" type="number" @bind="_form.DebounceMs" />
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Cycle min (s)</label>
-            <input class="form-control" type="number" @bind="_form.MinCycleSeconds" />
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Timeout (s)</label>
-            <input class="form-control" type="number" @bind="_form.TimeoutSeconds" />
-        </div>
-    </div>
+            @* End Detection Fallback *@
+            <div class="form-section-label">Détection de Fin — Fallback</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Fallback Strategy</label>
+                    <select class="cr-form-select" @bind="_form.EndFallbackStrategy">
+                        <option value="">— Aucun —</option>
+                        <option>EdgeOnBit</option>
+                        <option>LastChanged</option>
+                        <option>ValueEquals</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:3;">
+                    <label>Fallback NodeId</label>
+                    <input class="cr-input mono" @bind="_form.EndFallbackNodeId" placeholder="ns=2;i=..." />
+                </div>
+            </div>
 
-    @* ── Validation ────────────────────────────────────────────────────────── *@
-    <h6 class="text-info mt-3">Validation</h6>
-    <div class="row g-3">
-        <div class="col-md-3">
-            <label class="form-label">Epsilon</label>
-            <input class="form-control" type="number" step="0.001" @bind="_form.Epsilon" />
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Target Tolerance</label>
-            <input class="form-control" type="number" step="0.001" @bind="_form.TargetTolerance" />
-        </div>
-    </div>
-    <div class="row g-3 mt-1">
-        <div class="col-md-4">
-            <label class="form-label">Validation Speed NodeId</label>
-            <input class="form-control font-monospace" @bind="_form.ValidationSpeedNodeId" placeholder="ns=2;i=..." />
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Speed Min</label>
-            <input class="form-control" type="number" step="0.001" @bind="_form.ValidationSpeedMin" />
-        </div>
-        <div class="col-md-4">
-            <label class="form-label">Validation State NodeId</label>
-            <input class="form-control font-monospace" @bind="_form.ValidationStateNodeId" placeholder="ns=2;i=..." />
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">State Value</label>
-            <input class="form-control" @bind="_form.ValidationStateValue" placeholder="ex: RUNNING" />
-        </div>
-    </div>
+            @* Abort *@
+            <div class="form-section-label">Annulation (Abort)</div>
+            <div class="form-row">
+                <div class="form-group" style="flex:4;">
+                    <label>Abort NodeIds <span style="color:var(--text-muted);font-size:10px;text-transform:none;">(séparés par ;)</span></label>
+                    <input class="cr-input mono" @bind="_form.AbortNodeIds" placeholder="ns=2;i=100;ns=2;i=200" />
+                </div>
+            </div>
 
-    @* ── Recovery ──────────────────────────────────────────────────────────── *@
-    <h6 class="text-info mt-3">Recovery (reprise après redémarrage)</h6>
-    <div class="row g-3">
-        <div class="col-md-3">
-            <label class="form-label">Recovery Strategy</label>
-            <select class="form-select" @bind="_form.RecoveryStrategy">
-                <option value="">— Aucun —</option>
-                <option>None</option>
-                <option>EdgeConfirm</option>
-                <option>CounterConfirm</option>
-            </select>
-        </div>
-        <div class="col-md-4">
-            <label class="form-label">Confirm NodeId</label>
-            <input class="form-control font-monospace" @bind="_form.RecoveryConfirmNodeId" placeholder="ns=2;i=..." />
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Confirm Delta</label>
-            <input class="form-control" type="number" step="0.001" @bind="_form.RecoveryConfirmDelta" />
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Confirm Window (s)</label>
-            <input class="form-control" type="number" @bind="_form.RecoveryConfirmWindowSeconds" />
-        </div>
-    </div>
+            @* Timing *@
+            <div class="form-section-label">Timing</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Debounce (ms)</label>
+                    <input class="cr-input" type="number" @bind="_form.DebounceMs" />
+                </div>
+                <div class="form-group">
+                    <label>Cycle Min (s)</label>
+                    <input class="cr-input" type="number" @bind="_form.MinCycleSeconds" />
+                </div>
+                <div class="form-group">
+                    <label>Timeout (s)</label>
+                    <input class="cr-input" type="number" @bind="_form.TimeoutSeconds" />
+                </div>
+            </div>
 
-    <div class="d-flex gap-2 mt-4 mb-4">
-        <button class="btn btn-primary" @onclick="Save">Enregistrer</button>
-        <button class="btn btn-outline-light" @onclick="Cancel">Annuler</button>
-    </div>
-}
+            @* Validation *@
+            <div class="form-section-label">Validation</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Epsilon</label>
+                    <input class="cr-input" type="number" step="0.001" @bind="_form.Epsilon" />
+                </div>
+                <div class="form-group">
+                    <label>Target Tolerance</label>
+                    <input class="cr-input" type="number" step="0.001" @bind="_form.TargetTolerance" />
+                </div>
+                <div class="form-group" style="flex:2;">
+                    <label>Speed NodeId</label>
+                    <input class="cr-input mono" @bind="_form.ValidationSpeedNodeId" placeholder="ns=2;i=..." />
+                </div>
+                <div class="form-group">
+                    <label>Speed Min</label>
+                    <input class="cr-input" type="number" step="0.001" @bind="_form.ValidationSpeedMin" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex:2;">
+                    <label>State NodeId</label>
+                    <input class="cr-input mono" @bind="_form.ValidationStateNodeId" placeholder="ns=2;i=..." />
+                </div>
+                <div class="form-group">
+                    <label>State Value</label>
+                    <input class="cr-input" @bind="_form.ValidationStateValue" placeholder="ex: RUNNING" />
+                </div>
+            </div>
+
+            @* Recovery *@
+            <div class="form-section-label">Recovery (reprise après redémarrage)</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Recovery Strategy</label>
+                    <select class="cr-form-select" @bind="_form.RecoveryStrategy">
+                        <option value="">— Aucun —</option>
+                        <option>None</option>
+                        <option>EdgeConfirm</option>
+                        <option>CounterConfirm</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:2;">
+                    <label>Confirm NodeId</label>
+                    <input class="cr-input mono" @bind="_form.RecoveryConfirmNodeId" placeholder="ns=2;i=..." />
+                </div>
+                <div class="form-group">
+                    <label>Confirm Delta</label>
+                    <input class="cr-input" type="number" step="0.001" @bind="_form.RecoveryConfirmDelta" />
+                </div>
+                <div class="form-group">
+                    <label>Window (s)</label>
+                    <input class="cr-input" type="number" @bind="_form.RecoveryConfirmWindowSeconds" />
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button class="cr-btn cr-btn-primary" @onclick="Save">Enregistrer</button>
+                <button class="cr-btn cr-btn-ghost" @onclick="Cancel">Annuler</button>
+            </div>
+        </div>
+    }
+
+</div>
 
 @code {
     private List<MachineDto> _machines = new();

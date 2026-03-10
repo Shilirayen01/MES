@@ -90,16 +90,34 @@ public sealed class AnalyticsSummaryController : ControllerBase
     }
 
     /// <summary>Deletes a summary definition and all its items (cascade).</summary>
-    [HttpDelete("definitions/{id:int}")]
-    public async Task<IActionResult> DeleteDefinition(int id, CancellationToken ct)
-    {
-        var entity = await _db.AnalyticsSummaryDefinitions.FirstOrDefaultAsync(d => d.SummaryId == id, ct);
-        if (entity is null) return NotFound();
+[HttpDelete("definitions/{id:int}")]
+public async Task<IActionResult> DeleteDefinition(int id, CancellationToken ct)
+{
+    // 1. Chercher la définition
+    var entity = await _db.AnalyticsSummaryDefinitions
+        .FirstOrDefaultAsync(d => d.SummaryId == id, ct);
 
-        _db.AnalyticsSummaryDefinitions.Remove(entity);
-        await _db.SaveChangesAsync(ct);
-        return NoContent();
+    if (entity == null) return NotFound();
+
+    // 2. Supprimer TOUS les enfants liés manuellement avant la définition
+    // On cible la table enfant directement via le contexte
+    var itemsToDelete = await _db.AnalyticsSummaryItems
+        .Where(i => i.SummaryId == id)
+        .ToListAsync(ct);
+
+    if (itemsToDelete.Any())
+    {
+        _db.AnalyticsSummaryItems.RemoveRange(itemsToDelete);
     }
+
+    // 3. Supprimer la définition principale
+    _db.AnalyticsSummaryDefinitions.Remove(entity);
+
+    // 4. Sauvegarder les changements en une seule transaction
+    await _db.SaveChangesAsync(ct);
+    
+    return NoContent();
+}
 
     // ── Items ────────────────────────────────────────────────────────────────
 

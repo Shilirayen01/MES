@@ -3,109 +3,490 @@
 @inject AnalyticsResultsApiClient ReportsApi
 @inject MachinesApiClient MachinesApi
 
-<h3>Rapports Analytics — Résultats de Production</h3>
-<p class="text-muted small mb-3">Consultez les KPIs et résumés calculés après chaque cycle de production.</p>
-
-@* ── Filters ────────────────────────────────────────────────────────────────── *@
-<div class="d-flex flex-wrap align-items-end gap-3 mb-3">
-    <div>
-        <label class="form-label small mb-1">Machine</label>
-        <select class="form-select form-select-sm" style="min-width:200px" @bind="_machine">
-            <option value="">-- Sélectionner --</option>
-            @foreach (var m in _machines)
-            {
-                <option value="@m.MachineCode">@m.MachineCode — @m.Name</option>
-            }
-        </select>
-    </div>
-    <div>
-        <label class="form-label small mb-1">Depuis</label>
-        <input class="form-control form-control-sm" type="datetime-local" @bind="_from" />
-    </div>
-    <div>
-        <label class="form-label small mb-1">Jusqu'à</label>
-        <input class="form-control form-control-sm" type="datetime-local" @bind="_to" />
-    </div>
-    <div>
-        <label class="form-label small mb-1">Limite</label>
-        <input class="form-control form-control-sm" type="number" style="width:80px" @bind="_limit" />
-    </div>
-    <button class="btn btn-sm btn-primary" @onclick="Search">Rechercher</button>
-</div>
-
-@if (_error is not null)
-{
-    <div class="alert alert-danger">@_error</div>
-}
-
-@* ── Results ────────────────────────────────────────────────────────────────── *@
-@if (_runs is not null)
-{
-    @if (_runs.Count == 0)
-    {
-        <div class="alert alert-info">Aucun run trouvé pour cette période.</div>
+<style>
+    /* ── Variables (identical design system) ── */
+    .rp-page {
+        --bg-card:         #161b22;
+        --bg-elevated:     #1c2128;
+        --border:          #21262d;
+        --border-bright:   #30363d;
+        --accent-blue:     #238be6;
+        --accent-blue-dim: rgba(35, 139, 230, 0.15);
+        --green-badge-bg:  #1f8a5e;
+        --tag-bg:          #122535;
+        --tag-txt:         #58c4dc;
+        --tag-border:      #1d4a65;
+        --red:             #da3633;
+        --red-dim:         rgba(218, 54, 51, 0.15);
+        --orange:          #d97706;
+        --orange-dim:      rgba(217, 119, 6, 0.15);
+        --text-primary:    #e6edf3;
+        --text-secondary:  #7d8590;
+        --text-muted:      #3d444d;
+        font-family: 'DM Sans', sans-serif;
+        color: var(--text-primary);
     }
-    else
-    {
-        <p class="text-muted small">@_runs.Count run(s) trouvé(s)</p>
 
-        @foreach (var run in _runs)
+    /* ── Header ── */
+    .rp-page .page-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        margin-bottom: 28px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+    }
+    .rp-page .page-header::after {
+        content: '';
+        position: absolute;
+        bottom: -1px; left: 0;
+        width: 120px; height: 1px;
+        background: linear-gradient(90deg, var(--accent-blue), transparent);
+    }
+    .rp-page .page-header h3 {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.3px;
+        color: var(--text-primary);
+        margin: 0 0 4px 0;
+    }
+    .rp-page .page-header p {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 300;
+        margin: 0;
+    }
+
+    /* ── Filter Bar ── */
+    .rp-page .filter-bar {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px 20px;
+        display: flex;
+        align-items: flex-end;
+        gap: 14px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+    }
+    .rp-page .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+    .rp-page .filter-group label {
+        font-size: 11px;
+        color: var(--text-secondary);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+    .rp-page .rp-select,
+    .rp-page .rp-input {
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-bright);
+        color: var(--text-primary);
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 13px;
+        font-family: inherit;
+        transition: border-color 0.15s;
+    }
+    .rp-page .rp-select { min-width: 200px; }
+    .rp-page .rp-input-date { min-width: 170px; }
+    .rp-page .rp-input-num { width: 80px; }
+    .rp-page .rp-select:focus,
+    .rp-page .rp-input:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 0 2px var(--accent-blue-dim);
+    }
+    .rp-page .rp-select option { background: #1c2128; }
+
+    /* ── Buttons ── */
+    .rp-page .rp-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 18px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        border: 1px solid transparent;
+        font-family: inherit;
+        line-height: 1.4;
+    }
+    .rp-page .rp-btn-primary {
+        background: var(--accent-blue);
+        color: #fff;
+        border-color: var(--accent-blue);
+    }
+    .rp-page .rp-btn-primary:hover {
+        background: #3a9ef5;
+        box-shadow: 0 0 16px rgba(35,139,230,0.35);
+        transform: translateY(-1px);
+    }
+
+    /* ── Alerts ── */
+    .rp-page .rp-alert-danger {
+        background: rgba(218,54,51,0.1);
+        border: 1px solid rgba(218,54,51,0.3);
+        color: #f87171;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 13px;
+        margin-bottom: 16px;
+    }
+    .rp-page .rp-alert-info {
+        background: var(--accent-blue-dim);
+        border: 1px solid rgba(35,139,230,0.25);
+        color: #7db8f0;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 13px;
+        margin-bottom: 16px;
+    }
+    .rp-page .results-count {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .rp-page .results-count strong {
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--accent-blue);
+        font-size: 14px;
+    }
+
+    /* ── Run Card ── */
+    .rp-page .run-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 14px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        animation: rpFadeUp 0.35s ease both;
+        position: relative;
+    }
+    .rp-page .run-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(35,139,230,0.15), transparent);
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .rp-page .run-card:hover { border-color: var(--border-bright); }
+    .rp-page .run-card:hover::before { opacity: 1; }
+
+    @@keyframes rpFadeUp {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Run Card Header ── */
+    .rp-page .run-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 13px 18px;
+        border-bottom: 1px solid var(--border);
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .rp-page .run-card-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .rp-page .run-scope {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--tag-txt);
+    }
+    .rp-page .run-time {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-family: 'JetBrains Mono', monospace;
+    }
+    .rp-page .run-arrow {
+        color: var(--text-muted);
+        font-size: 11px;
+    }
+    .rp-page .run-duration {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 4px;
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-bright);
+        color: var(--text-secondary);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .rp-page .run-id {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        color: var(--text-muted);
+        letter-spacing: 0.5px;
+    }
+
+    /* ── Status Badges ── */
+    .rp-page .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 9px;
+        border-radius: 4px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+    }
+    .rp-page .status-completed  { background: var(--green-badge-bg); color: #fff; }
+    .rp-page .status-aborted    { background: var(--red); color: #fff; }
+    .rp-page .status-timeout    { background: var(--orange); color: #fff; }
+    .rp-page .status-running    { background: var(--accent-blue); color: #fff; }
+    .rp-page .status-default    { background: #2d333b; border: 1px solid var(--border-bright); color: var(--text-secondary); }
+    .rp-page .status-completed::before,
+    .rp-page .status-running::before {
+        content: '';
+        width: 5px; height: 5px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.5);
+        animation: rpPulse 2s ease infinite;
+    }
+    @@keyframes rpPulse {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.4; }
+    }
+
+    /* ── Run Card Body ── */
+    .rp-page .run-card-body {
+        padding: 12px 18px;
+    }
+    .rp-page .no-results-row {
+        font-size: 12px;
+        color: var(--text-muted);
+        font-style: italic;
+        padding: 6px 0;
+    }
+
+    /* ── Values Table ── */
+    .rp-page .values-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        table-layout: fixed;
+    }
+    .rp-page .values-table th {
+        text-align: left;
+        padding: 6px 10px;
+        color: var(--text-secondary);
+        font-weight: 600;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-elevated);
+    }
+    .rp-page .values-table th:nth-child(1) { width: 35%; }
+    .rp-page .values-table th:nth-child(2) { width: 25%; text-align: right; }
+    .rp-page .values-table th:nth-child(3) { width: 15%; }
+    .rp-page .values-table th:nth-child(4) { width: 25%; }
+    .rp-page .values-table td {
+        padding: 8px 10px;
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+    }
+    .rp-page .values-table tbody tr:last-child td { border-bottom: none; }
+    .rp-page .values-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+    .rp-page .values-table code {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        color: var(--tag-txt);
+        background: var(--tag-bg);
+        padding: 2px 6px;
+        border-radius: 3px;
+    }
+    .rp-page .val-number {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text-primary);
+        text-align: right;
+        display: block;
+    }
+    .rp-page .val-unit {
+        font-size: 11px;
+        color: var(--text-secondary);
+    }
+    .rp-page .type-badge-summary {
+        display: inline-flex;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        background: var(--tag-bg);
+        border: 1px solid var(--tag-border);
+        color: var(--tag-txt);
+    }
+    .rp-page .type-badge-kpi {
+        display: inline-flex;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        background: var(--orange-dim);
+        border: 1px solid rgba(217,119,6,0.3);
+        color: #fbbf24;
+    }
+</style>
+
+<div class="rp-page">
+
+    @* ── Page Header ── *@
+    <div class="page-header">
+        <div>
+            <h3>Rapports Analytics — Résultats de Production</h3>
+            <p>Consultez les KPIs et résumés calculés après chaque cycle de production.</p>
+        </div>
+    </div>
+
+    @* ── Filter Bar ── *@
+    <div class="filter-bar">
+        <div class="filter-group">
+            <label>Machine</label>
+            <select class="rp-select" @bind="_machine">
+                <option value="">-- Sélectionner --</option>
+                @foreach (var m in _machines)
+                {
+                    <option value="@m.MachineCode">@m.MachineCode — @m.Name</option>
+                }
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Depuis</label>
+            <input class="rp-input rp-input-date" type="datetime-local" @bind="_from" />
+        </div>
+        <div class="filter-group">
+            <label>Jusqu'à</label>
+            <input class="rp-input rp-input-date" type="datetime-local" @bind="_to" />
+        </div>
+        <div class="filter-group">
+            <label>Limite</label>
+            <input class="rp-input rp-input-num" type="number" @bind="_limit" />
+        </div>
+        <button class="rp-btn rp-btn-primary" @onclick="Search">
+            🔍 Rechercher
+        </button>
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="rp-alert-danger">@_error</div>
+    }
+
+    @* ── Results ── *@
+    @if (_runs is not null)
+    {
+        @if (_runs.Count == 0)
         {
-            <div class="card bg-dark border-secondary mb-3">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>
-                        <strong>@run.ScopeKey</strong>
-                        <span class="badge @StatusBadge(run.Status) ms-2">@run.Status</span>
-                        <small class="text-muted ms-2">@run.StartTs.ToString("dd/MM HH:mm:ss")</small>
-                        @if (run.EndTs.HasValue)
-                        {
-                            <small class="text-muted"> → @run.EndTs.Value.ToString("HH:mm:ss")</small>
-                        }
-                        @if (run.DurationSeconds.HasValue)
-                        {
-                            <span class="badge bg-dark ms-2">@FormatDuration(run.DurationSeconds.Value)</span>
-                        }
-                    </span>
-                    <small class="text-muted font-monospace">@run.RunId.ToString()[..8]</small>
-                </div>
-                <div class="card-body p-2">
-                    @if (run.SummaryValues.Count > 0 || run.KpiValues.Count > 0)
-                    {
-                        <table class="table table-dark table-sm mb-0">
-                            <thead>
-                                <tr><th>Indicateur</th><th>Valeur</th><th>Unité</th><th>Type</th></tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var s in run.SummaryValues)
-                                {
-                                    <tr>
-                                        <td><code>@s.FieldName</code></td>
-                                        <td class="fw-bold">@(s.Value.HasValue ? s.Value.Value.ToString("N2") : "—")</td>
-                                        <td>@s.Unit</td>
-                                        <td><span class="badge bg-info">Summary</span></td>
-                                    </tr>
-                                }
-                                @foreach (var k in run.KpiValues)
-                                {
-                                    <tr>
-                                        <td><code>@k.KpiCode</code></td>
-                                        <td class="fw-bold">@(k.Value.HasValue ? k.Value.Value.ToString("N2") : "—")</td>
-                                        <td>@k.Unit</td>
-                                        <td><span class="badge bg-warning text-dark">KPI</span></td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    }
-                    else
-                    {
-                        <p class="text-muted small mb-0">Aucun résultat calculé pour ce run.</p>
-                    }
-                </div>
+            <div class="rp-alert-info">Aucun run trouvé pour cette période.</div>
+        }
+        else
+        {
+            <div class="results-count">
+                <strong>@_runs.Count</strong> run@(_runs.Count > 1 ? "s" : "") trouvé@(_runs.Count > 1 ? "s" : "")
             </div>
+
+            @foreach (var run in _runs)
+            {
+                <div class="run-card">
+
+                    @* Run Header *@
+                    <div class="run-card-header">
+                        <div class="run-card-left">
+                            <span class="@GetStatusClass(run.Status) status-badge">@run.Status</span>
+                            <span class="run-scope">@run.ScopeKey</span>
+                            <span class="run-time">@run.StartTs.ToString("dd/MM HH:mm:ss")</span>
+                            @if (run.EndTs.HasValue)
+                            {
+                                <span class="run-arrow">→</span>
+                                <span class="run-time">@run.EndTs.Value.ToString("HH:mm:ss")</span>
+                            }
+                            @if (run.DurationSeconds.HasValue)
+                            {
+                                <span class="run-duration">⏱ @FormatDuration(run.DurationSeconds.Value)</span>
+                            }
+                        </div>
+                        <span class="run-id">@run.RunId.ToString()[..8]</span>
+                    </div>
+
+                    @* Run Body *@
+                    <div class="run-card-body">
+                        @if (run.SummaryValues.Count > 0 || run.KpiValues.Count > 0)
+                        {
+                            <table class="values-table">
+                                <thead>
+                                    <tr>
+                                        <th>Indicateur</th>
+                                        <th>Valeur</th>
+                                        <th>Unité</th>
+                                        <th>Type</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var s in run.SummaryValues)
+                                    {
+                                        <tr>
+                                            <td><code>@s.FieldName</code></td>
+                                            <td><span class="val-number">@(s.Value.HasValue ? s.Value.Value.ToString("N2") : "—")</span></td>
+                                            <td><span class="val-unit">@s.Unit</span></td>
+                                            <td><span class="type-badge-summary">Summary</span></td>
+                                        </tr>
+                                    }
+                                    @foreach (var k in run.KpiValues)
+                                    {
+                                        <tr>
+                                            <td><code>@k.KpiCode</code></td>
+                                            <td><span class="val-number">@(k.Value.HasValue ? k.Value.Value.ToString("N2") : "—")</span></td>
+                                            <td><span class="val-unit">@k.Unit</span></td>
+                                            <td><span class="type-badge-kpi">KPI</span></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                        else
+                        {
+                            <p class="no-results-row">Aucun résultat calculé pour ce run.</p>
+                        }
+                    </div>
+
+                </div>
+            }
         }
     }
-}
+
+</div>
 
 @code {
     private List<ProductionRunResultDto>? _runs;
@@ -136,20 +517,22 @@
         catch (Exception ex) { _error = ex.Message; }
     }
 
-    private static string StatusBadge(string status) => status?.ToLower() switch
+    private static string GetStatusClass(string status) => status?.ToLower() switch
     {
-        "completed" => "bg-success",
-        "aborted" => "bg-danger",
-        "timeout" => "bg-warning text-dark",
-        "running" => "bg-primary",
-        _ => "bg-secondary"
+        "completed" => "status-completed",
+        "aborted"   => "status-aborted",
+        "timeout"   => "status-timeout",
+        "running"   => "status-running",
+        _           => "status-default"
     };
 
     private static string FormatDuration(int totalSeconds)
     {
         var ts = TimeSpan.FromSeconds(totalSeconds);
-        return ts.Hours > 0 ? $"{ts.Hours}h{ts.Minutes:D2}m{ts.Seconds:D2}s"
-            : ts.Minutes > 0 ? $"{ts.Minutes}m{ts.Seconds:D2}s"
-            : $"{ts.Seconds}s";
+        return ts.Hours > 0
+            ? $"{ts.Hours}h{ts.Minutes:D2}m{ts.Seconds:D2}s"
+            : ts.Minutes > 0
+                ? $"{ts.Minutes}m{ts.Seconds:D2}s"
+                : $"{ts.Seconds}s";
     }
 }

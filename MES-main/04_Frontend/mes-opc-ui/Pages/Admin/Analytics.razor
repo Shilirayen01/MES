@@ -3,176 +3,808 @@
 @inject AnalyticsApiClient AnalyticsApi
 @inject MachinesApiClient MachinesApi
 
-<h3>Analytics — KPI & Résumés</h3>
-<p class="text-muted small mb-3">Configurez les agrégations calculées par le Worker pour chaque run de production.</p>
+<style>
+    /* ── Variables ── */
+    .analytics-page {
+        --bg-card:         #161b22;
+        --bg-elevated:     #1c2128;
+        --border:          #21262d;
+        --border-bright:   #30363d;
+        --accent-blue:     #238be6;
+        --accent-blue-dim: rgba(35, 139, 230, 0.15);
+        --green-badge-bg:  #1f8a5e;
+        --tag-bg:          #122535;
+        --tag-txt:         #58c4dc;
+        --tag-border:      #1d4a65;
+        --red:             #da3633;
+        --red-dim:         rgba(218, 54, 51, 0.15);
+        --text-primary:    #e6edf3;
+        --text-secondary:  #7d8590;
+        --text-muted:      #3d444d;
+        font-family: 'DM Sans', sans-serif;
+        color: var(--text-primary);
+    }
 
-@if (_error is not null)
-{
-    <div class="alert alert-danger">@_error</div>
-}
+    /* ── Header ── */
+    .analytics-page .page-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        margin-bottom: 28px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+    }
+    .analytics-page .page-header::after {
+        content: '';
+        position: absolute;
+        bottom: -1px; left: 0;
+        width: 120px; height: 1px;
+        background: linear-gradient(90deg, var(--accent-blue), transparent);
+    }
+    .analytics-page .page-header h3 {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.3px;
+        color: var(--text-primary);
+        margin: 0 0 4px 0;
+    }
+    .analytics-page .page-header p {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 300;
+        margin: 0;
+    }
+    .analytics-page .header-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
 
-@* ── Definitions list ────────────────────────────────────────────────────────── *@
-<div class="d-flex gap-2 mb-3">
-    <button class="btn btn-sm btn-primary" @onclick="NewDefinition">+ Nouvelle Définition</button>
-    <button class="btn btn-sm btn-outline-light" @onclick="Load">Rafraîchir</button>
-</div>
+    /* ── Buttons ── */
+    .analytics-page .ak-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 15px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        border: 1px solid transparent;
+        text-decoration: none;
+        line-height: 1.4;
+    }
+    .analytics-page .ak-btn-primary {
+        background: var(--accent-blue);
+        color: #fff;
+        border-color: var(--accent-blue);
+    }
+    .analytics-page .ak-btn-primary:hover {
+        background: #3a9ef5;
+        box-shadow: 0 0 16px rgba(35,139,230,0.35);
+        transform: translateY(-1px);
+    }
+    .analytics-page .ak-btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+        border-color: var(--border-bright);
+    }
+    .analytics-page .ak-btn-ghost:hover {
+        color: var(--text-primary);
+        border-color: var(--accent-blue);
+        background: var(--accent-blue-dim);
+    }
+    .analytics-page .ak-btn-danger {
+        background: var(--red);
+        color: #fff;
+        border-color: var(--red);
+        padding: 5px 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    .analytics-page .ak-btn-danger:hover {
+        background: #f04340;
+        border-color: #f04340;
+        box-shadow: 0 0 12px rgba(218,54,51,0.35);
+        transform: translateY(-1px);
+    }
+    .analytics-page .ak-btn-delete-item {
+        background: transparent;
+        color: var(--red);
+        border: 1px solid var(--red);
+        border-radius: 4px;
+        padding: 0;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+        width: 26px;
+        height: 22px;
+    }
+    .analytics-page .ak-btn-delete-item:hover {
+        background: var(--red-dim);
+    }
+    .analytics-page .items-table th:last-child,
+    .analytics-page .items-table td:last-child {
+        width: 42px;
+        min-width: 42px;
+        text-align: center;
+        padding-left: 4px;
+        padding-right: 8px;
+        vertical-align: middle;
+    }
+    .analytics-page .ak-btn-items {
+        background: transparent;
+        border: 1px solid var(--accent-blue);
+        color: var(--accent-blue);
+        padding: 5px 12px;
+        font-size: 12px;
+    }
+    .analytics-page .ak-btn-items:hover {
+        background: var(--accent-blue-dim);
+    }
+    .analytics-page .ak-btn-add-item {
+        background: transparent;
+        border: 1px solid var(--accent-blue);
+        color: var(--accent-blue);
+        font-size: 12px;
+        padding: 4px 12px;
+    }
+    .analytics-page .ak-btn-add-item:hover {
+        background: var(--accent-blue-dim);
+    }
 
-@if (_defs is null)
-{
-    <p>Chargement...</p>
-}
-else if (_defs.Count == 0)
-{
-    <div class="alert alert-info">Aucune définition. Créez-en une ci-dessous.</div>
-}
-else
-{
-    <div class="row g-3 mb-4">
-        @foreach (var d in _defs)
-        {
-            <div class="col-12 col-lg-6">
-                <div class="card bg-dark border @(_selectedDef?.SummaryId == d.SummaryId ? "border-primary" : "border-secondary")">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span>
-                            <strong>@d.Name</strong>
-                            <span class="badge @(d.IsActive ? "bg-success" : "bg-secondary") ms-2">
-                                @(d.IsActive ? "Actif" : "Inactif")
-                            </span>
-                            @if (!string.IsNullOrEmpty(d.AppliesToMachineCode))
-                            {
-                                <span class="badge bg-info ms-1">@d.AppliesToMachineCode</span>
-                            }
-                        </span>
-                        <div class="d-flex gap-1">
-                            <button class="btn btn-sm btn-outline-info" @onclick="() => SelectDefinition(d)">Items</button>
-                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteDef(d)">🗑</button>
-                        </div>
-                    </div>
-                    @if (_selectedDef?.SummaryId == d.SummaryId)
-                    {
-                        <div class="card-body p-2">
-                            @if (d.Items.Count == 0)
-                            {
-                                <p class="text-muted small mb-1">Aucun item.</p>
-                            }
-                            else
-                            {
-                                <table class="table table-dark table-sm mb-2">
-                                    <thead><tr><th>Field</th><th>Agg.</th><th>NodeId</th><th>Unit</th><th></th></tr></thead>
-                                    <tbody>
-                                        @foreach (var it in d.Items)
-                                        {
-                                            <tr>
-                                                <td><code>@it.FieldName</code></td>
-                                                <td>@it.Aggregation</td>
-                                                <td><small class="text-muted">@it.TagNodeId</small></td>
-                                                <td>@it.Unit</td>
-                                                <td>
-                                                    <button class="btn btn-sm btn-outline-danger py-0"
-                                                            @onclick="() => DeleteItem(d.SummaryId, it.ItemId)">×</button>
-                                                </td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            }
-                            <button class="btn btn-sm btn-outline-primary" @onclick="NewItem">+ Item</button>
-                        </div>
-                    }
+    /* ── Stats bar ── */
+    .analytics-page .stats-bar {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+    .analytics-page .stat-chip {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 14px 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .analytics-page .stat-chip-icon {
+        width: 32px; height: 32px;
+        border-radius: 8px;
+        background: var(--accent-blue-dim);
+        border: 1px solid rgba(35,139,230,0.25);
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+        font-size: 14px;
+    }
+    .analytics-page .stat-chip-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--text-primary);
+        line-height: 1;
+        margin-bottom: 2px;
+    }
+    .analytics-page .stat-chip-label {
+        font-size: 11px;
+        color: var(--text-secondary);
+    }
+
+    /* ── KPI Grid ── */
+    .analytics-page .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+        margin-bottom: 28px;
+    }
+
+    /* ── KPI Card ── */
+    .analytics-page .kpi-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+        position: relative;
+        animation: akFadeUp 0.4s ease both;
+    }
+    .analytics-page .kpi-card:hover {
+        border-color: var(--border-bright);
+        box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(35,139,230,0.08);
+        transform: translateY(-1px);
+    }
+    .analytics-page .kpi-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(35,139,230,0.2), transparent);
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .analytics-page .kpi-card:hover::before { opacity: 1; }
+    .analytics-page .kpi-card.selected {
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 0 1px rgba(35,139,230,0.3);
+    }
+
+    @@keyframes akFadeUp {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Card Header ── */
+    .analytics-page .kpi-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 13px 16px;
+        border-bottom: 1px solid var(--border);
+    }
+    .analytics-page .kpi-card-id {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .analytics-page .kpi-card-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+    .analytics-page .kpi-card-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* ── Badges ── */
+    .analytics-page .badge-actif {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3px 10px;
+        border-radius: 4px;
+        background: var(--green-badge-bg);
+        color: #fff;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+    .analytics-page .badge-actif::before {
+        content: '';
+        width: 5px; height: 5px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.5);
+        animation: akPulse 2s ease infinite;
+    }
+    .analytics-page .badge-inactif {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3px 10px;
+        border-radius: 4px;
+        background: #2d333b;
+        border: 1px solid var(--border-bright);
+        color: var(--text-secondary);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+    .analytics-page .badge-machine {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 10px;
+        border-radius: 4px;
+        background: var(--tag-bg);
+        border: 1px solid var(--tag-border);
+        color: var(--tag-txt);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+    }
+
+    @@keyframes akPulse {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.4; }
+    }
+
+    /* ── Card Body (metrics) ── */
+    .analytics-page .kpi-card-body {
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        min-height: 52px;
+    }
+    .analytics-page .kpi-metric {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .analytics-page .kpi-metric-icon {
+        width: 28px; height: 28px;
+        border-radius: 6px;
+        background: var(--bg-elevated);
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+    .analytics-page .kpi-metric-label {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-bottom: 2px;
+    }
+    .analytics-page .kpi-metric-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+    .analytics-page .kpi-divider {
+        width: 1px; height: 32px;
+        background: var(--border);
+        flex-shrink: 0;
+    }
+
+    /* ── Items panel ── */
+    .analytics-page .items-panel {
+        border-top: 1px solid var(--border);
+        padding: 12px 16px;
+        background: var(--bg-elevated);
+        overflow: hidden;
+    }
+    .analytics-page .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        margin-bottom: 10px;
+        table-layout: fixed;
+    }
+    .analytics-page .items-table th:nth-child(1),
+    .analytics-page .items-table td:nth-child(1) {
+        width: 22%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .analytics-page .items-table th:nth-child(2),
+    .analytics-page .items-table td:nth-child(2) { width: 10%; }
+    .analytics-page .items-table th:nth-child(3),
+    .analytics-page .items-table td:nth-child(3) {
+        width: 44%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 0;
+    }
+    .analytics-page .items-table th:nth-child(4),
+    .analytics-page .items-table td:nth-child(4) { width: 9%; }
+    .analytics-page .items-table th {
+        text-align: left;
+        padding: 6px 10px;
+        color: var(--text-secondary);
+        font-weight: 500;
+        border-bottom: 1px solid var(--border);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+    .analytics-page .items-table td {
+        padding: 7px 10px;
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+    }
+    .analytics-page .items-table tr:last-child td { border-bottom: none; }
+    .analytics-page .items-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .analytics-page .items-table code {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        color: var(--tag-txt);
+        background: var(--tag-bg);
+        padding: 2px 6px;
+        border-radius: 3px;
+    }
+    .analytics-page .items-table .node-id {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        color: var(--text-primary);
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .analytics-page .no-items {
+        font-size: 12px;
+        color: var(--text-muted);
+        padding: 4px 0 10px;
+        font-style: italic;
+    }
+
+    /* ── Forms ── */
+    .analytics-page .form-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 20px 24px;
+        margin-bottom: 20px;
+    }
+    .analytics-page .form-section h5 {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0 0 16px 0;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border);
+    }
+    .analytics-page .form-section h5 em {
+        color: var(--tag-txt);
+        font-style: normal;
+    }
+    .analytics-page .form-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+    }
+    .analytics-page .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        flex: 1;
+        min-width: 140px;
+    }
+    .analytics-page .form-group label {
+        font-size: 11px;
+        color: var(--text-secondary);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+    .analytics-page .ak-input,
+    .analytics-page .ak-select {
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-bright);
+        color: var(--text-primary);
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 13px;
+        font-family: inherit;
+        transition: border-color 0.15s;
+        width: 100%;
+    }
+    .analytics-page .ak-input:focus,
+    .analytics-page .ak-select:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 0 2px rgba(35,139,230,0.15);
+    }
+    .analytics-page .ak-select option { background: #1c2128; }
+    .analytics-page .ak-input.font-mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .analytics-page .form-check-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-top: 22px;
+    }
+    .analytics-page .form-check-row input[type="checkbox"] {
+        width: 15px; height: 15px;
+        accent-color: var(--accent-blue);
+        cursor: pointer;
+    }
+    .analytics-page .form-check-row label {
+        font-size: 13px;
+        color: var(--text-primary);
+        cursor: pointer;
+    }
+    .analytics-page .form-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+    }
+
+    /* ── Alert ── */
+    .analytics-page .ak-alert-danger {
+        background: rgba(218,54,51,0.1);
+        border: 1px solid rgba(218,54,51,0.3);
+        color: #f87171;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 13px;
+        margin-bottom: 16px;
+    }
+    .analytics-page .ak-alert-info {
+        background: var(--accent-blue-dim);
+        border: 1px solid rgba(35,139,230,0.25);
+        color: #7db8f0;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 13px;
+        margin-bottom: 16px;
+    }
+    .analytics-page .loading-text {
+        color: var(--text-secondary);
+        font-size: 13px;
+        padding: 8px 0;
+    }
+</style>
+
+<div class="analytics-page">
+
+    @* ── Page Header ── *@
+    <div class="page-header">
+        <div>
+            <h3>Analytics — KPI &amp; Résumés</h3>
+            <p>Configurez les agrégations calculées par le Worker pour chaque run de production.</p>
+        </div>
+        <div class="header-actions">
+            <button class="ak-btn ak-btn-ghost" @onclick="Load">
+                ↻ Rafraîchir
+            </button>
+            <button class="ak-btn ak-btn-primary" @onclick="NewDefinition">
+                + Nouvelle Définition
+            </button>
+        </div>
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="ak-alert-danger">@_error</div>
+    }
+
+    @if (_defs is null)
+    {
+        <p class="loading-text">Chargement...</p>
+    }
+    else
+    {
+        @* ── Stats Bar ── *@
+        <div class="stats-bar">
+            <div class="stat-chip">
+                <div class="stat-chip-icon">⬡</div>
+                <div>
+                    <div class="stat-chip-value">@_defs.Count</div>
+                    <div class="stat-chip-label">Définitions totales</div>
                 </div>
             </div>
-        }
-    </div>
-}
-
-@* ── Create Definition form ─────────────────────────────────────────────────── *@
-@if (_defForm is not null)
-{
-    <hr />
-    <h5>Créer une Définition</h5>
-    <div class="row g-3">
-        <div class="col-md-5">
-            <label class="form-label">Nom</label>
-            <input class="form-control" @bind="_defForm.Name" placeholder="Résumé Shift Matin" />
-        </div>
-        <div class="col-md-4">
-            <label class="form-label">Machine (optionnel)</label>
-            <select class="form-select" @bind="_defForm.AppliesToMachineCode">
-                <option value="">-- Toutes les machines --</option>
-                @foreach (var m in _machines)
-                {
-                    <option value="@m.MachineCode">@m.MachineCode — @m.Name</option>
-                }
-            </select>
-        </div>
-        <div class="col-md-2 d-flex align-items-end">
-            <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" id="defActive" @bind="_defForm.IsActive" />
-                <label class="form-check-label" for="defActive">Actif</label>
+            <div class="stat-chip">
+                <div class="stat-chip-icon">✓</div>
+                <div>
+                    <div class="stat-chip-value">@_defs.Count(d => d.IsActive)</div>
+                    <div class="stat-chip-label">Actives</div>
+                </div>
+            </div>
+            <div class="stat-chip">
+                <div class="stat-chip-icon">⬡</div>
+                <div>
+                    <div class="stat-chip-value">@_defs.Where(d => !string.IsNullOrEmpty(d.AppliesToMachineCode)).Select(d => d.AppliesToMachineCode).Distinct().Count()</div>
+                    <div class="stat-chip-label">Machines liées</div>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="d-flex gap-2 mt-3">
-        <button class="btn btn-primary" @onclick="SaveDef">Enregistrer</button>
-        <button class="btn btn-outline-light" @onclick="() => _defForm = null">Annuler</button>
-    </div>
-}
 
-@* ── Add Item form ───────────────────────────────────────────────────────────── *@
-@if (_itemForm is not null && _selectedDef is not null)
-{
-    <hr />
-    <h5>Ajouter un Item à <em>@_selectedDef.Name</em></h5>
-    <div class="row g-3">
-        <div class="col-md-3">
-            <label class="form-label">Nom du champ</label>
-            <input class="form-control" @bind="_itemForm.FieldName" placeholder="VitesseMoyenne" />
+        @if (_defs.Count == 0)
+        {
+            <div class="ak-alert-info">Aucune définition. Créez-en une ci-dessous.</div>
+        }
+        else
+        {
+            @* ── KPI Grid ── *@
+            <div class="kpi-grid">
+                @foreach (var d in _defs)
+                {
+                    var isSelected = _selectedDef?.SummaryId == d.SummaryId;
+                    var machineName = _machines.FirstOrDefault(m => m.MachineCode == d.AppliesToMachineCode)?.Name;
+
+                    <div class="kpi-card @(isSelected ? "selected" : "")">
+
+                        @* Card Header *@
+                        <div class="kpi-card-header">
+                            <div class="kpi-card-id">
+                                @if (d.IsActive)
+                                {
+                                    <span class="badge-actif">Actif</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-inactif">Inactif</span>
+                                }
+                                @if (!string.IsNullOrEmpty(d.AppliesToMachineCode))
+                                {
+                                    <span class="badge-machine">@d.AppliesToMachineCode</span>
+                                }
+                                <span class="kpi-card-name">@d.Name</span>
+                            </div>
+                            <div class="kpi-card-actions">
+                                <button class="ak-btn ak-btn-items" @onclick="() => SelectDefinition(d)">
+                                    Items
+                                </button>
+                                <button class="ak-btn ak-btn-danger" @onclick="() => DeleteDef(d)" title="Supprimer">
+                                    Supprimer
+                                </button>
+                            </div>
+                        </div>
+
+                        @* Card Body: metrics *@
+                        <div class="kpi-card-body">
+                            <div class="kpi-metric">
+                                <div class="kpi-metric-icon">🖥</div>
+                                <div>
+                                    <div class="kpi-metric-label">Machine</div>
+                                    <div class="kpi-metric-value" style="@(string.IsNullOrEmpty(machineName) ? "color:var(--text-muted)" : "")">
+                                        @(string.IsNullOrEmpty(machineName) ? "Non définie" : machineName)
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="kpi-divider"></div>
+                            <div class="kpi-metric">
+                                <div class="kpi-metric-icon">≡</div>
+                                <div>
+                                    <div class="kpi-metric-label">Items configurés</div>
+                                    <div class="kpi-metric-value">
+                                        @(d.Items.Count == 0 ? "—" : $"{d.Items.Count} item{(d.Items.Count > 1 ? "s" : "")}")
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @* Items panel (visible when selected) *@
+                        @if (isSelected)
+                        {
+                            <div class="items-panel">
+                                @if (d.Items.Count == 0)
+                                {
+                                    <p class="no-items">Aucun item configuré.</p>
+                                }
+                                else
+                                {
+                                    <table class="items-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Field</th>
+                                                <th>Agg.</th>
+                                                <th>Node Id</th>
+                                                <th>Unité</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var it in d.Items)
+                                            {
+                                                <tr>
+                                                    <td><code>@it.FieldName</code></td>
+                                                    <td>@it.Aggregation</td>
+                                                    <td><span class="node-id">@it.TagNodeId</span></td>
+                                                    <td>@it.Unit</td>
+                                                    <td>
+                                                        <button class="ak-btn-delete-item"
+                                                                @onclick="() => DeleteItem(d.SummaryId, it.ItemId)">×</button>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                }
+                                <button class="ak-btn ak-btn-add-item" @onclick="NewItem">+ Item</button>
+                            </div>
+                        }
+
+                    </div>
+                }
+            </div>
+        }
+    }
+
+    @* ── Create Definition form ── *@
+    @if (_defForm is not null)
+    {
+        <div class="form-section">
+            <h5>Créer une Définition</h5>
+            <div class="form-row">
+                <div class="form-group" style="flex:2;min-width:200px;">
+                    <label>Nom</label>
+                    <input class="ak-input" @bind="_defForm.Name" placeholder="Résumé Shift Matin" />
+                </div>
+                <div class="form-group" style="flex:2;min-width:180px;">
+                    <label>Machine (optionnel)</label>
+                    <select class="ak-select" @bind="_defForm.AppliesToMachineCode">
+                        <option value="">-- Toutes les machines --</option>
+                        @foreach (var m in _machines)
+                        {
+                            <option value="@m.MachineCode">@m.MachineCode — @m.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group" style="flex:0;min-width:80px;">
+                    <label>&nbsp;</label>
+                    <div class="form-check-row">
+                        <input type="checkbox" id="defActive" @bind="_defForm.IsActive" />
+                        <label for="defActive">Actif</label>
+                    </div>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="ak-btn ak-btn-primary" @onclick="SaveDef">Enregistrer</button>
+                <button class="ak-btn ak-btn-ghost" @onclick="() => _defForm = null">Annuler</button>
+            </div>
         </div>
-        <div class="col-md-2">
-            <label class="form-label">Source</label>
-            <select class="form-select" @bind="_itemForm.SourceType">
-                <option>Tag</option>
-                <option>Constant</option>
-            </select>
+    }
+
+    @* ── Add Item form ── *@
+    @if (_itemForm is not null && _selectedDef is not null)
+    {
+        <div class="form-section">
+            <h5>Ajouter un Item à <em>@_selectedDef.Name</em></h5>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nom du champ</label>
+                    <input class="ak-input" @bind="_itemForm.FieldName" placeholder="VitesseMoyenne" />
+                </div>
+                <div class="form-group">
+                    <label>Source</label>
+                    <select class="ak-select" @bind="_itemForm.SourceType">
+                        <option>Tag</option>
+                        <option>Constant</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Agrégation</label>
+                    <select class="ak-select" @bind="_itemForm.Aggregation">
+                        <option>Sum</option>
+                        <option>Average</option>
+                        <option>Max</option>
+                        <option>Min</option>
+                        <option>Last</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Scope</label>
+                    <select class="ak-select" @bind="_itemForm.Scope">
+                        <option>Run</option>
+                        <option>Last</option>
+                        <option>LookbackWindow</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Unité</label>
+                    <input class="ak-input" @bind="_itemForm.Unit" placeholder="m/min" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex:3;">
+                    <label>Tag Node Id</label>
+                    <input class="ak-input font-mono" @bind="_itemForm.TagNodeId" placeholder="ns=2;i=2001" />
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>Lookback (min)</label>
+                    <input class="ak-input" type="number" @bind="_itemForm.LookbackMinutes" />
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="ak-btn ak-btn-primary" @onclick="SaveItem">Ajouter</button>
+                <button class="ak-btn ak-btn-ghost" @onclick="() => _itemForm = null">Annuler</button>
+            </div>
         </div>
-        <div class="col-md-2">
-            <label class="form-label">Agrégation</label>
-            <select class="form-select" @bind="_itemForm.Aggregation">
-                <option>Sum</option>
-                <option>Average</option>
-                <option>Max</option>
-                <option>Min</option>
-                <option>Last</option>
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Scope</label>
-            <select class="form-select" @bind="_itemForm.Scope">
-                <option>Run</option>
-                <option>Last</option>
-                <option>LookbackWindow</option>
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Unité</label>
-            <input class="form-control" @bind="_itemForm.Unit" placeholder="m/min" />
-        </div>
-    </div>
-    <div class="row g-3 mt-1">
-        <div class="col-md-6">
-            <label class="form-label">Tag Node Id</label>
-            <input class="form-control font-monospace" @bind="_itemForm.TagNodeId" placeholder="ns=2;i=2001" />
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">LookbackMin</label>
-            <input class="form-control" type="number" @bind="_itemForm.LookbackMinutes" />
-        </div>
-    </div>
-    <div class="d-flex gap-2 mt-3">
-        <button class="btn btn-primary" @onclick="SaveItem">Ajouter</button>
-        <button class="btn btn-outline-light" @onclick="() => _itemForm = null">Annuler</button>
-    </div>
-}
+    }
+
+</div>
 
 @code {
     private List<AnalyticsSummaryDefDto>? _defs;
@@ -191,7 +823,6 @@ else
         {
             _machines = await MachinesApi.GetAllAsync(true) ?? [];
             _defs = await AnalyticsApi.GetDefinitionsAsync() ?? [];
-            // Refresh selected def if any
             if (_selectedDef is not null)
                 _selectedDef = _defs.FirstOrDefault(d => d.SummaryId == _selectedDef.SummaryId);
         }

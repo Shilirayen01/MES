@@ -4,138 +4,576 @@
 @inject UiAdminApiClient Api
 @inject NavigationManager Nav
 
-<div class="d-flex align-items-center justify-content-between mb-3">
-    <div>
-        <h3 class="mb-0">UI Dashboards</h3>
-        <small class="text-muted">Gestion des dashboards (défaut, création, suppression)</small>
+<style>
+    /* ── Variables (identical design system) ── */
+    .ud-page {
+        --bg-card:         #161b22;
+        --bg-elevated:     #1c2128;
+        --border:          #21262d;
+        --border-bright:   #30363d;
+        --accent-blue:     #238be6;
+        --accent-blue-dim: rgba(35, 139, 230, 0.15);
+        --green-badge-bg:  #1f8a5e;
+        --tag-bg:          #122535;
+        --tag-txt:         #58c4dc;
+        --tag-border:      #1d4a65;
+        --red:             #da3633;
+        --red-dim:         rgba(218, 54, 51, 0.15);
+        --text-primary:    #e6edf3;
+        --text-secondary:  #7d8590;
+        --text-muted:      #3d444d;
+        font-family: 'DM Sans', sans-serif;
+        color: var(--text-primary);
+    }
+
+    /* ── Header ── */
+    .ud-page .page-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        margin-bottom: 28px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+    }
+    .ud-page .page-header::after {
+        content: '';
+        position: absolute;
+        bottom: -1px; left: 0;
+        width: 120px; height: 1px;
+        background: linear-gradient(90deg, var(--accent-blue), transparent);
+    }
+    .ud-page .page-header h3 {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.3px;
+        color: var(--text-primary);
+        margin: 0 0 4px 0;
+    }
+    .ud-page .page-header p {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 300;
+        margin: 0;
+    }
+
+    /* ── Buttons ── */
+    .ud-page .ud-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 16px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        border: 1px solid transparent;
+        font-family: inherit;
+        line-height: 1.4;
+        text-decoration: none;
+    }
+    .ud-page .ud-btn-primary {
+        background: var(--accent-blue);
+        color: #fff;
+        border-color: var(--accent-blue);
+    }
+    .ud-page .ud-btn-primary:hover {
+        background: #3a9ef5;
+        box-shadow: 0 0 16px rgba(35,139,230,0.35);
+        transform: translateY(-1px);
+    }
+    .ud-page .ud-btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+        border-color: var(--border-bright);
+    }
+    .ud-page .ud-btn-ghost:hover {
+        color: var(--text-primary);
+        border-color: var(--accent-blue);
+        background: var(--accent-blue-dim);
+    }
+    .ud-page .ud-btn-outline {
+        background: transparent;
+        color: var(--accent-blue);
+        border-color: var(--accent-blue);
+        font-size: 12px;
+        padding: 5px 12px;
+    }
+    .ud-page .ud-btn-outline:hover { background: var(--accent-blue-dim); }
+    .ud-page .ud-btn-danger {
+        background: var(--red);
+        color: #fff;
+        border-color: var(--red);
+        font-size: 12px;
+        padding: 5px 12px;
+    }
+    .ud-page .ud-btn-danger:hover {
+        background: #f04340;
+        box-shadow: 0 0 12px rgba(218,54,51,0.35);
+        transform: translateY(-1px);
+    }
+    .ud-page .ud-btn-icon {
+        background: transparent;
+        color: var(--text-secondary);
+        border-color: var(--border-bright);
+        padding: 5px 9px;
+        font-size: 13px;
+    }
+    .ud-page .ud-btn-icon:hover {
+        color: var(--text-primary);
+        border-color: var(--accent-blue);
+        background: var(--accent-blue-dim);
+    }
+
+    /* ── Alert ── */
+    .ud-page .ud-alert-danger {
+        background: rgba(218,54,51,0.1);
+        border: 1px solid rgba(218,54,51,0.3);
+        color: #f87171;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 13px;
+        margin-bottom: 16px;
+    }
+    .ud-page .loading-text {
+        color: var(--text-secondary);
+        font-size: 13px;
+        padding: 8px 0;
+    }
+
+    /* ── Dashboard Grid ── */
+    .ud-page .dash-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+    @@media (max-width: 1100px) { .ud-page .dash-grid { grid-template-columns: repeat(2, 1fr); } }
+    @@media (max-width: 700px)  { .ud-page .dash-grid { grid-template-columns: 1fr; } }
+
+    /* ── Dashboard Card ── */
+    .ud-page .dash-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+        animation: udFadeUp 0.4s ease both;
+        position: relative;
+    }
+    .ud-page .dash-card:hover {
+        border-color: var(--border-bright);
+        box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(35,139,230,0.08);
+        transform: translateY(-1px);
+    }
+    .ud-page .dash-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(35,139,230,0.2), transparent);
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .ud-page .dash-card:hover::before { opacity: 1; }
+    .ud-page .dash-card.is-default {
+        border-color: rgba(31,138,94,0.4);
+    }
+    .ud-page .dash-card.is-default::before {
+        background: linear-gradient(90deg, transparent, rgba(31,138,94,0.3), transparent);
+        opacity: 1;
+    }
+
+    @@keyframes udFadeUp {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .ud-page .dash-card:nth-child(1) { animation-delay: 0.05s; }
+    .ud-page .dash-card:nth-child(2) { animation-delay: 0.10s; }
+    .ud-page .dash-card:nth-child(3) { animation-delay: 0.15s; }
+    .ud-page .dash-card:nth-child(4) { animation-delay: 0.20s; }
+    .ud-page .dash-card:nth-child(5) { animation-delay: 0.25s; }
+    .ud-page .dash-card:nth-child(6) { animation-delay: 0.30s; }
+
+    /* ── Card Body ── */
+    .ud-page .dash-card-body {
+        padding: 16px 18px;
+        flex: 1;
+    }
+    .ud-page .dash-card-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    .ud-page .dash-card-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0 0 4px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .ud-page .badge-default {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 9px;
+        border-radius: 4px;
+        background: var(--green-badge-bg);
+        color: #fff;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+    }
+    .ud-page .badge-default::before {
+        content: '';
+        width: 5px; height: 5px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.5);
+        animation: udPulse 2s ease infinite;
+    }
+    @@keyframes udPulse {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.4; }
+    }
+    .ud-page .dash-card-desc {
+        font-size: 12px;
+        color: var(--text-secondary);
+        min-height: 2em;
+        line-height: 1.5;
+    }
+
+    /* ── Card Actions row ── */
+    .ud-page .dash-card-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 14px;
+    }
+    .ud-page .dash-card-actions .ud-btn-outline {
+        flex: 1;
+        justify-content: center;
+    }
+
+    /* ── Dropdown ── */
+    .ud-page .ud-dropdown {
+        position: relative;
+    }
+    .ud-page .ud-dropdown-menu {
+        display: none;
+        position: absolute;
+        right: 0; top: calc(100% + 6px);
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-bright);
+        border-radius: 8px;
+        min-width: 160px;
+        z-index: 100;
+        overflow: hidden;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .ud-page .ud-dropdown.open .ud-dropdown-menu { display: block; }
+    .ud-page .ud-dropdown-item {
+        display: block;
+        width: 100%;
+        padding: 8px 14px;
+        font-size: 13px;
+        color: var(--text-primary);
+        background: transparent;
+        border: none;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.12s;
+        font-family: inherit;
+    }
+    .ud-page .ud-dropdown-item:hover { background: rgba(35,139,230,0.1); color: var(--accent-blue); }
+    .ud-page .ud-dropdown-divider { border-top: 1px solid var(--border); margin: 4px 0; }
+    .ud-page .ud-dropdown-item.danger { color: var(--red); }
+    .ud-page .ud-dropdown-item.danger:hover { background: var(--red-dim); }
+
+    /* ── Card Footer ── */
+    .ud-page .dash-card-footer {
+        padding: 9px 18px;
+        border-top: 1px solid var(--border);
+        font-size: 11px;
+        color: var(--text-muted);
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── Modal ── */
+    .ud-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.6);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: udFadeIn 0.15s ease;
+    }
+    @@keyframes udFadeIn {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+    .ud-modal {
+        background: var(--bg-card);
+        border: 1px solid var(--border-bright);
+        border-radius: 12px;
+        width: 100%;
+        max-width: 460px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+        animation: udSlideUp 0.2s ease;
+        font-family: 'DM Sans', sans-serif;
+        color: var(--text-primary);
+    }
+    @@keyframes udSlideUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .ud-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+    }
+    .ud-modal-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+    }
+    .ud-modal-title.danger { color: var(--red); }
+    .ud-modal-close {
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 18px;
+        cursor: pointer;
+        padding: 2px 6px;
+        border-radius: 4px;
+        line-height: 1;
+        transition: color 0.15s;
+    }
+    .ud-modal-close:hover { color: var(--text-primary); }
+    .ud-modal-body {
+        padding: 20px;
+    }
+    .ud-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 14px 20px;
+        border-top: 1px solid var(--border);
+    }
+    .ud-modal .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        margin-bottom: 14px;
+    }
+    .ud-modal .form-group label {
+        font-size: 11px;
+        color: var(--text-secondary);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+    .ud-modal .ud-input {
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-bright);
+        color: var(--text-primary);
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 13px;
+        font-family: inherit;
+        width: 100%;
+        transition: border-color 0.15s;
+    }
+    .ud-modal .ud-input:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 0 2px var(--accent-blue-dim);
+    }
+    .ud-modal .form-check-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 4px;
+    }
+    .ud-modal .form-check-row input[type="checkbox"] {
+        width: 15px; height: 15px;
+        accent-color: var(--accent-blue);
+        cursor: pointer;
+    }
+    .ud-modal .form-check-row label {
+        font-size: 13px;
+        color: var(--text-primary);
+        cursor: pointer;
+        text-transform: none;
+        letter-spacing: 0;
+    }
+    .ud-modal .delete-warning {
+        font-size: 13px;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+    }
+    .ud-modal .delete-sub {
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+    .ud-modal .validation-errors {
+        background: var(--red-dim);
+        border: 1px solid rgba(218,54,51,0.3);
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 12px;
+        color: #f87171;
+        margin-bottom: 14px;
+    }
+</style>
+
+<div class="ud-page">
+
+    @* ── Page Header ── *@
+    <div class="page-header">
+        <div>
+            <h3>UI Dashboards</h3>
+            <p>Gestion des dashboards (défaut, création, suppression)</p>
+        </div>
+        <button class="ud-btn ud-btn-primary" @onclick="New">
+            + Nouveau
+        </button>
     </div>
-    <button class="btn btn-primary" @onclick="New"><i class="bi bi-plus-lg"></i> Nouveau</button>
-</div>
 
-@if (!string.IsNullOrWhiteSpace(Error))
-{
-    <div class="alert alert-danger">@Error</div>
-}
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="ud-alert-danger">@Error</div>
+    }
 
-@if (Items is null)
-{
-    <div class="text-muted">Chargement...</div>
-}
-else
-{
-    <div class="row g-3">
-        @foreach (var d in Items.OrderByDescending(x => x.IsDefault).ThenBy(x => x.Name))
-        {
-            <div class="col-12 col-md-6 col-lg-4">
-                <div class="card shadow-sm h-100">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="me-2">
-                                <div class="d-flex align-items-center gap-2">
-                                    <h5 class="card-title mb-0">@d.Name</h5>
+    @if (Items is null)
+    {
+        <p class="loading-text">Chargement...</p>
+    }
+    else
+    {
+        <div class="dash-grid">
+            @foreach (var d in Items.OrderByDescending(x => x.IsDefault).ThenBy(x => x.Name))
+            {
+                <div class="dash-card @(d.IsDefault ? "is-default" : "")">
+                    <div class="dash-card-body">
+
+                        <div class="dash-card-top">
+                            <div>
+                                <div class="dash-card-title">
+                                    @d.Name
                                     @if (d.IsDefault)
                                     {
-                                        <span class="badge text-bg-success">Default</span>
+                                        <span class="badge-default">Default</span>
                                     }
                                 </div>
-                                <div class="text-muted small mt-1" style="min-height: 2.4em;">
+                                <div class="dash-card-desc">
                                     @(!string.IsNullOrWhiteSpace(d.Description) ? d.Description : "—")
                                 </div>
                             </div>
-                            <div class="dropdown">
-                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                    Actions
+
+                            @* Dropdown Actions *@
+                            <div class="ud-dropdown @(_openDropdown == d.Id ? "open" : "")">
+                                <button class="ud-btn ud-btn-ghost" style="padding:5px 10px;font-size:12px;"
+                                        @onclick="() => ToggleDropdown(d.Id)">
+                                    Actions ▾
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><button class="dropdown-item" @onclick="() => Open(d.Id)">Ouvrir</button></li>
-                                    <li><button class="dropdown-item" @onclick="() => Edit(d)">Modifier</button></li>
-                                    <li><button class="dropdown-item" @onclick="() => SetDefault(d.Id)">Définir défaut</button></li>
-                                    <li><hr class="dropdown-divider" /></li>
-                                    <li><button class="dropdown-item text-danger" @onclick="() => AskDelete(d)">Supprimer</button></li>
-                                </ul>
+                                <div class="ud-dropdown-menu">
+                                    <button class="ud-dropdown-item" @onclick="() => { CloseDropdown(); Open(d.Id); }">Ouvrir</button>
+                                    <button class="ud-dropdown-item" @onclick="() => { CloseDropdown(); Edit(d); }">Modifier</button>
+                                    <button class="ud-dropdown-item" @onclick="() => { CloseDropdown(); SetDefault(d.Id); }">Définir défaut</button>
+                                    <div class="ud-dropdown-divider"></div>
+                                    <button class="ud-dropdown-item danger" @onclick="() => { CloseDropdown(); AskDelete(d); }">Supprimer</button>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="mt-3 d-flex gap-2">
-                            <button class="btn btn-outline-primary w-100" @onclick="() => Open(d.Id)">Gérer (Zones/Widgets)</button>
-                            <button class="btn btn-outline-secondary" @onclick="() => Edit(d)">
-                                <i class="bi bi-pencil"></i>
+                        <div class="dash-card-actions">
+                            <button class="ud-btn ud-btn-outline" @onclick="() => Open(d.Id)">
+                                ⚙ Gérer (Zones/Widgets)
                             </button>
+                            <button class="ud-btn ud-btn-icon" @onclick="() => Edit(d)" title="Modifier">✏</button>
                         </div>
+
                     </div>
-                    <div class="card-footer small text-muted">
-                        Created: @d.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                    <div class="dash-card-footer">
+                        Créé : @d.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
                     </div>
                 </div>
-            </div>
-        }
-    </div>
-}
+            }
+        </div>
+    }
 
-@* Modal Create/Edit *@
-@if (Form is not null)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,.5);">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@(IsEdit ? "Modifier Dashboard" : "Créer Dashboard")</h5>
-                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+    @* ── Modal Create/Edit ── *@
+    @if (Form is not null)
+    {
+        <div class="ud-modal-backdrop" @onclick="CloseModal">
+            <div class="ud-modal" @onclick:stopPropagation>
+                <div class="ud-modal-header">
+                    <h5 class="ud-modal-title">@(IsEdit ? "✏ Modifier Dashboard" : "+ Créer Dashboard")</h5>
+                    <button class="ud-modal-close" @onclick="CloseModal">✕</button>
                 </div>
-
                 <EditForm Model="Form" OnValidSubmit="Save">
                     <DataAnnotationsValidator />
-                    <div class="modal-body">
-                        <ValidationSummary />
-
-                        <div class="mb-2">
-                            <label class="form-label">Name</label>
-                            <InputText class="form-control" @bind-Value="Form.Name" />
+                    <div class="ud-modal-body">
+                        <ValidationSummary class="validation-errors" />
+                        <div class="form-group">
+                            <label>Nom</label>
+                            <InputText class="ud-input" @bind-Value="Form.Name" placeholder="Nom du dashboard" />
                         </div>
-
-                        <div class="mb-2">
-                            <label class="form-label">Description</label>
-                            <InputText class="form-control" @bind-Value="Form.Description" />
+                        <div class="form-group">
+                            <label>Description</label>
+                            <InputText class="ud-input" @bind-Value="Form.Description" placeholder="Description (optionnel)" />
                         </div>
-
-                        <div class="form-check mt-2">
-                            <InputCheckbox class="form-check-input" @bind-Value="Form.IsDefault" />
-                            <label class="form-check-label">Default</label>
+                        <div class="form-check-row">
+                            <InputCheckbox @bind-Value="Form.IsDefault" id="chkDefault" />
+                            <label for="chkDefault">Définir comme dashboard par défaut</label>
                         </div>
                     </div>
-
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" type="button" @onclick="CloseModal">Annuler</button>
-                        <button class="btn btn-primary" type="submit">Enregistrer</button>
+                    <div class="ud-modal-footer">
+                        <button class="ud-btn ud-btn-ghost" type="button" @onclick="CloseModal">Annuler</button>
+                        <button class="ud-btn ud-btn-primary" type="submit">Enregistrer</button>
                     </div>
                 </EditForm>
             </div>
         </div>
-    </div>
-}
+    }
 
-@* Modal confirm delete *@
-@if (DeleteCandidate is not null)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,.5);">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title text-danger">Supprimer Dashboard</h5>
-                    <button type="button" class="btn-close" @onclick="CloseDelete"></button>
+    @* ── Modal Confirm Delete ── *@
+    @if (DeleteCandidate is not null)
+    {
+        <div class="ud-modal-backdrop" @onclick="CloseDelete">
+            <div class="ud-modal" @onclick:stopPropagation>
+                <div class="ud-modal-header">
+                    <h5 class="ud-modal-title danger">Supprimer Dashboard</h5>
+                    <button class="ud-modal-close" @onclick="CloseDelete">✕</button>
                 </div>
-                <div class="modal-body">
-                    Confirmer suppression de : <strong>@DeleteCandidate.Name</strong> ?
-                    <div class="text-muted small mt-2">Zones / Widgets / Bindings seront supprimés aussi.</div>
+                <div class="ud-modal-body">
+                    <p class="delete-warning">
+                        Confirmer la suppression de : <strong style="color:var(--tag-txt)">@DeleteCandidate.Name</strong> ?
+                    </p>
+                    <p class="delete-sub">Zones, Widgets et Bindings associés seront également supprimés.</p>
                 </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="CloseDelete">Annuler</button>
-                    <button class="btn btn-danger" @onclick="ConfirmDelete">Supprimer</button>
+                <div class="ud-modal-footer">
+                    <button class="ud-btn ud-btn-ghost" @onclick="CloseDelete">Annuler</button>
+                    <button class="ud-btn ud-btn-danger" @onclick="ConfirmDelete">Supprimer</button>
                 </div>
             </div>
         </div>
-    </div>
-}
+    }
+
+</div>
 
 @code {
     private List<UiDashboardDto>? Items;
@@ -146,6 +584,7 @@ else
     private Guid EditId;
 
     private UiDashboardDto? DeleteCandidate;
+    private Guid _openDropdown = Guid.Empty;
 
     protected override async Task OnInitializedAsync() => await Load();
 
@@ -176,7 +615,6 @@ else
     private async Task Save()
     {
         if (Form is null) return;
-
         try
         {
             if (!IsEdit)
@@ -212,4 +650,11 @@ else
         }
         catch (Exception ex) { Error = ex.Message; }
     }
+
+    private void ToggleDropdown(Guid id)
+    {
+        _openDropdown = _openDropdown == id ? Guid.Empty : id;
+    }
+
+    private void CloseDropdown() => _openDropdown = Guid.Empty;
 }

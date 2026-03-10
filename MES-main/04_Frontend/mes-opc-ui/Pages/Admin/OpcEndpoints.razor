@@ -3,92 +3,315 @@
 @using mes_opc_ui.Services.AdminApi
 @inject OpcEndpointsApiClient Api
 
-<h3>OPC Endpoints</h3>
+<style>
+    .oe-page {
+        --bg-card:         #161b22;
+        --bg-elevated:     #1c2128;
+        --border:          #21262d;
+        --border-bright:   #30363d;
+        --accent-blue:     #238be6;
+        --accent-blue-dim: rgba(35, 139, 230, 0.15);
+        --green-badge-bg:  #1f8a5e;
+        --tag-bg:          #122535;
+        --tag-txt:         #58c4dc;
+        --tag-border:      #1d4a65;
+        --red:             #da3633;
+        --red-dim:         rgba(218, 54, 51, 0.15);
+        --orange:          #d97706;
+        --orange-dim:      rgba(217,119,6,0.12);
+        --text-primary:    #e6edf3;
+        --text-secondary:  #7d8590;
+        --text-muted:      #3d444d;
+        font-family: 'DM Sans', sans-serif;
+        color: var(--text-primary);
+    }
 
-<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-    <button class="btn btn-sm btn-primary" @onclick="New">+ Nouveau Endpoint</button>
-    <label class="form-check form-check-inline mb-0">
-        <input class="form-check-input" type="checkbox" @bind="ShowOnlyActive" />
-        <span class="form-check-label">Afficher seulement actifs</span>
-    </label>
-    <button class="btn btn-sm btn-outline-light" @onclick="Load">Rafraîchir</button>
-</div>
+    /* ── Header ── */
+    .oe-page .page-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        margin-bottom: 28px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+    }
+    .oe-page .page-header::after {
+        content: '';
+        position: absolute;
+        bottom: -1px; left: 0;
+        width: 120px; height: 1px;
+        background: linear-gradient(90deg, var(--accent-blue), transparent);
+    }
+    .oe-page .page-header h3 { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; margin: 0 0 4px 0; }
+    .oe-page .page-header p  { font-size: 12px; color: var(--text-secondary); margin: 0; }
 
-@if (!string.IsNullOrWhiteSpace(Error))
-{
-    <div class="alert alert-danger py-2">@Error</div>
-}
+    /* ── Toolbar ── */
+    .oe-page .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    .oe-page .toolbar-sep { width: 1px; height: 24px; background: var(--border-bright); }
+    .oe-page .filter-toggle {
+        display: flex; align-items: center; gap: 7px;
+        font-size: 13px; color: var(--text-secondary); cursor: pointer; user-select: none;
+        padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border-bright);
+        background: transparent; transition: all 0.15s; font-family: inherit;
+    }
+    .oe-page .filter-toggle:hover { color: var(--text-primary); border-color: var(--accent-blue); background: var(--accent-blue-dim); }
+    .oe-page .filter-toggle input[type="checkbox"] { accent-color: var(--accent-blue); width: 14px; height: 14px; cursor: pointer; }
 
-@if (Items is null)
-{
-    <div class="alert alert-info py-2">Chargement…</div>
-}
-else
-{
-    <div class="table-responsive">
-        <table class="table table-dark table-striped table-hover align-middle">
-            <thead>
-            <tr>
-                <th style="width:70px;">Id</th>
-                <th style="width:260px;">Name</th>
-                <th>EndpointUrl</th>
-                <th style="width:90px;">Active</th>
-                <th style="width:220px;"></th>
-            </tr>
-            </thead>
-            <tbody>
-            @foreach (var e in Items)
-            {
-                <tr>
-                    <td>@e.Id</td>
-                    <td>@e.Name</td>
-                    <td style="word-break:break-all;">@e.EndpointUrl</td>
-                    <td>@(e.IsActive ? "Yes" : "No")</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-info" @onclick="() => Edit(e)">Edit</button>
-                        <button class="btn btn-sm btn-outline-warning ms-2" @onclick="() => Deactivate(e)">Désactiver</button>
-                    </td>
-                </tr>
-            }
-            </tbody>
-        </table>
+    /* ── Buttons ── */
+    .oe-page .oe-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 500;
+        cursor: pointer; transition: all 0.18s ease; border: 1px solid transparent;
+        font-family: inherit; line-height: 1.4;
+    }
+    .oe-page .oe-btn-primary { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+    .oe-page .oe-btn-primary:hover { background: #3a9ef5; box-shadow: 0 0 14px rgba(35,139,230,0.35); transform: translateY(-1px); }
+    .oe-page .oe-btn-ghost { background: transparent; color: var(--text-secondary); border-color: var(--border-bright); }
+    .oe-page .oe-btn-ghost:hover { color: var(--text-primary); border-color: var(--accent-blue); background: var(--accent-blue-dim); }
+    .oe-page .oe-btn-sm { font-size: 11px; padding: 3px 10px; }
+    .oe-page .oe-btn-outline { background: transparent; color: var(--accent-blue); border-color: var(--accent-blue); }
+    .oe-page .oe-btn-outline:hover { background: var(--accent-blue-dim); }
+    .oe-page .oe-btn-warn { background: transparent; color: var(--orange); border-color: var(--orange); }
+    .oe-page .oe-btn-warn:hover { background: var(--orange-dim); }
+
+    /* ── Alert ── */
+    .oe-page .oe-alert-danger {
+        background: rgba(218,54,51,0.1); border: 1px solid rgba(218,54,51,0.3);
+        color: #f87171; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px;
+    }
+    .oe-page .loading-text { color: var(--text-secondary); font-size: 13px; }
+
+    /* ── Table Card ── */
+    .oe-page .table-card {
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: 10px; overflow: hidden; margin-bottom: 24px;
+    }
+    .oe-page .table-scroll { overflow-x: auto; }
+    .oe-page .oe-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .oe-page .oe-table th {
+        text-align: left; padding: 10px 16px;
+        color: var(--text-secondary); font-size: 11px; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.4px;
+        border-bottom: 1px solid var(--border); background: var(--bg-elevated); white-space: nowrap;
+    }
+    .oe-page .oe-table td {
+        padding: 11px 16px; color: var(--text-primary);
+        border-bottom: 1px solid var(--border); vertical-align: middle;
+    }
+    .oe-page .oe-table tbody tr:last-child td { border-bottom: none; }
+    .oe-page .oe-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+    .oe-page .cell-id {
+        font-family: 'JetBrains Mono', monospace; font-size: 11px;
+        color: var(--text-muted); font-weight: 600;
+    }
+    .oe-page .cell-name { font-weight: 600; color: var(--text-primary); }
+    .oe-page .cell-url {
+        font-family: 'JetBrains Mono', monospace; font-size: 11px;
+        color: var(--tag-txt); word-break: break-all; max-width: 380px;
+    }
+    .oe-page .badge-active {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 2px 9px; border-radius: 4px;
+        background: var(--green-badge-bg); color: #fff;
+        font-family: 'JetBrains Mono', monospace; font-size: 10px;
+        font-weight: 700; text-transform: uppercase;
+    }
+    .oe-page .badge-active::before {
+        content: ''; width: 5px; height: 5px; border-radius: 50%;
+        background: rgba(255,255,255,0.5); animation: oePulse 2s ease infinite;
+    }
+    .oe-page .badge-inactive {
+        display: inline-flex; padding: 2px 9px; border-radius: 4px;
+        background: rgba(125,133,144,0.1); border: 1px solid var(--border-bright);
+        color: var(--text-secondary); font-family: 'JetBrains Mono', monospace;
+        font-size: 10px; font-weight: 700; text-transform: uppercase;
+    }
+    @@keyframes oePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .oe-page .cell-actions { display: flex; gap: 6px; white-space: nowrap; }
+
+    /* ── Inline Form Panel ── */
+    .oe-page .form-panel {
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: 10px; overflow: hidden; margin-bottom: 24px;
+        animation: oeFadeUp 0.25s ease;
+    }
+    @@keyframes oeFadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .oe-page .form-panel-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 13px 20px; border-bottom: 1px solid var(--border); background: var(--bg-elevated);
+    }
+    .oe-page .form-panel-title {
+        font-size: 14px; font-weight: 600; color: var(--text-primary);
+        display: flex; align-items: center; gap: 8px;
+    }
+    .oe-page .form-panel-title .edit-id {
+        font-family: 'JetBrains Mono', monospace; font-size: 12px;
+        color: var(--tag-txt); background: var(--tag-bg);
+        border: 1px solid var(--tag-border); padding: 1px 7px; border-radius: 4px;
+    }
+    .oe-page .form-panel-body {
+        padding: 20px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 16px;
+    }
+    .oe-page .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .oe-page .form-group label {
+        font-size: 11px; color: var(--text-secondary);
+        font-weight: 500; text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .oe-page .form-group.full-width { grid-column: 1 / -1; }
+    .oe-page .oe-input, .oe-page .oe-select {
+        background: var(--bg-elevated); border: 1px solid var(--border-bright);
+        color: var(--text-primary); border-radius: 6px; padding: 7px 10px;
+        font-size: 13px; font-family: inherit; width: 100%; transition: border-color 0.15s;
+    }
+    .oe-page .oe-input.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .oe-page .oe-input:focus, .oe-page .oe-select:focus {
+        outline: none; border-color: var(--accent-blue); box-shadow: 0 0 0 2px var(--accent-blue-dim);
+    }
+    .oe-page .form-check-row {
+        display: flex; align-items: center; gap: 8px; padding-top: 22px;
+    }
+    .oe-page .form-check-row input[type="checkbox"] { accent-color: var(--accent-blue); width: 15px; height: 15px; cursor: pointer; }
+    .oe-page .form-check-row label { font-size: 13px; color: var(--text-primary); cursor: pointer; }
+    .oe-page .form-panel-footer {
+        display: flex; align-items: center; gap: 10px;
+        padding: 14px 20px; border-top: 1px solid var(--border);
+    }
+    .oe-page .validation-errors {
+        background: var(--red-dim); border: 1px solid rgba(218,54,51,0.3);
+        border-radius: 6px; padding: 8px 12px; font-size: 12px; color: #f87171;
+        grid-column: 1 / -1;
+    }
+</style>
+
+<div class="oe-page">
+
+    @* ── Page Header ── *@
+    <div class="page-header">
+        <div>
+            <h3>OPC Endpoints</h3>
+            <p>Gestion des endpoints OPC-UA (création, modification, désactivation)</p>
+        </div>
     </div>
-}
 
-@if (Form is not null)
-{
-    <hr />
-    <h5 class="mt-3">@(IsEdit ? $"Modifier endpoint #{EditId}" : "Créer endpoint")</h5>
+    @* ── Toolbar ── *@
+    <div class="toolbar">
+        <button class="oe-btn oe-btn-primary" @onclick="New">+ Nouveau Endpoint</button>
+        <div class="toolbar-sep"></div>
+        <label class="filter-toggle">
+            <input type="checkbox" @bind="ShowOnlyActive" @bind:after="Load" />
+            Afficher seulement actifs
+        </label>
+        <div class="toolbar-sep"></div>
+        <button class="oe-btn oe-btn-ghost" @onclick="Load">↻ Rafraîchir</button>
+    </div>
 
-    <EditForm Model="Form" OnValidSubmit="Save">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="oe-alert-danger">@Error</div>
+    }
 
-        <div class="mb-2">
-            <label class="form-label">Name</label>
-            <InputText class="form-control" @bind-Value="Form.Name" />
+    @* ── Table ── *@
+    @if (Items is null)
+    {
+        <p class="loading-text">Chargement…</p>
+    }
+    else
+    {
+        <div class="table-card">
+            <div class="table-scroll">
+                <table class="oe-table">
+                    <thead>
+                        <tr>
+                            <th style="width:60px;">Id</th>
+                            <th style="width:220px;">Nom</th>
+                            <th>Endpoint URL</th>
+                            <th style="width:90px;">Statut</th>
+                            <th style="width:180px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var e in Items)
+                        {
+                            <tr>
+                                <td><span class="cell-id">#@e.Id</span></td>
+                                <td><span class="cell-name">@e.Name</span></td>
+                                <td><span class="cell-url">@e.EndpointUrl</span></td>
+                                <td>
+                                    @if (e.IsActive)
+                                    {
+                                        <span class="badge-active">Actif</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-inactive">Inactif</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="cell-actions">
+                                        <button class="oe-btn oe-btn-outline oe-btn-sm" @onclick="() => Edit(e)">✏ Edit</button>
+                                        <button class="oe-btn oe-btn-warn oe-btn-sm" @onclick="() => Deactivate(e)">Désactiver</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
         </div>
+    }
 
-        <div class="mb-2">
-            <label class="form-label">EndpointUrl</label>
-            <InputText class="form-control" @bind-Value="Form.EndpointUrl" />
+    @* ── Form Panel ── *@
+    @if (Form is not null)
+    {
+        <div class="form-panel">
+            <div class="form-panel-header">
+                <div class="form-panel-title">
+                    @if (IsEdit)
+                    {
+                        <span>✏ Modifier Endpoint</span>
+                        <span class="edit-id">#@EditId</span>
+                    }
+                    else
+                    {
+                        <span>+ Créer Endpoint</span>
+                    }
+                </div>
+                <button class="oe-btn oe-btn-ghost oe-btn-sm" @onclick="Cancel">✕ Fermer</button>
+            </div>
+            <EditForm Model="Form" OnValidSubmit="Save">
+                <DataAnnotationsValidator />
+                <div class="form-panel-body">
+                    <ValidationSummary class="validation-errors" />
+                    <div class="form-group">
+                        <label>Nom</label>
+                        <InputText class="oe-input" @bind-Value="Form.Name" placeholder="Nom de l'endpoint" />
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <InputText class="oe-input" @bind-Value="Form.Description" placeholder="Description (optionnel)" />
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Endpoint URL</label>
+                        <InputText class="oe-input mono" @bind-Value="Form.EndpointUrl" placeholder="opc.tcp://..." />
+                    </div>
+                    <div class="form-check-row">
+                        <InputCheckbox @bind-Value="Form.IsActive" id="oeActive" />
+                        <label for="oeActive">Endpoint actif</label>
+                    </div>
+                </div>
+                <div class="form-panel-footer">
+                    <button type="submit" class="oe-btn oe-btn-primary">Enregistrer</button>
+                    <button type="button" class="oe-btn oe-btn-ghost" @onclick="Cancel">Annuler</button>
+                </div>
+            </EditForm>
         </div>
+    }
 
-        <div class="mb-2">
-            <label class="form-label">Description</label>
-            <InputText class="form-control" @bind-Value="Form.Description" />
-        </div>
-
-        <div class="form-check mb-3">
-            <InputCheckbox class="form-check-input" @bind-Value="Form.IsActive" />
-            <label class="form-check-label">Active</label>
-        </div>
-
-        <button class="btn btn-primary" type="submit">Enregistrer</button>
-        <button class="btn btn-secondary ms-2" type="button" @onclick="Cancel">Annuler</button>
-    </EditForm>
-
-}
+</div>
 
 @code {
     private List<OpcEndpointDto>? Items;
@@ -106,16 +329,8 @@ else
         Error = null;
         Items = null;
         StateHasChanged();
-
-        try
-        {
-            Items = await Api.GetAllAsync(ShowOnlyActive ? true : null) ?? [];
-        }
-        catch (Exception ex)
-        {
-            Error = ex.Message;
-            Items = [];
-        }
+        try { Items = await Api.GetAllAsync(ShowOnlyActive ? true : null) ?? []; }
+        catch (Exception ex) { Error = ex.Message; Items = []; }
     }
 
     private void New()
@@ -140,18 +355,13 @@ else
 
     private async Task Deactivate(OpcEndpointDto e)
     {
-        try
-        {
-            await Api.DeleteAsync(e.Id); // soft delete (IsActive=false)
-            await Load();
-        }
+        try { await Api.DeleteAsync(e.Id); await Load(); }
         catch (Exception ex) { Error = ex.Message; }
     }
 
     private async Task Save()
     {
         if (Form is null) return;
-
         try
         {
             if (!IsEdit)
@@ -169,7 +379,6 @@ else
             {
                 await Api.UpdateAsync(EditId, Form);
             }
-
             Form = null;
             await Load();
         }

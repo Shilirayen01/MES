@@ -1,14 +1,213 @@
 @page "/admin"
 
-<h3>Administration</h3>
+<style>
+    .admin-page {
+        --bg-card:         #161b22;
+        --bg-elevated:     #1c2128;
+        --border:          #21262d;
+        --border-bright:   #30363d;
+        --accent-blue:     #238be6;
+        --accent-blue-dim: rgba(35, 139, 230, 0.15);
+        --green-badge-bg:  #1f8a5e;
+        --tag-bg:          #122535;
+        --tag-txt:         #58c4dc;
+        --tag-border:      #1d4a65;
+        --scope-pink:      #e879a0;
+        --orange:          #d97706;
+        --text-primary:    #e6edf3;
+        --text-secondary:  #7d8590;
+        --text-muted:      #3d444d;
+        font-family: 'DM Sans', sans-serif;
+        color: var(--text-primary);
+    }
 
-<p class="text-muted">Gestion du catalogue OPC et des paramètres UI.</p>
+    /* ── Header ── */
+    .admin-page .page-header {
+        display: flex; align-items: flex-end; justify-content: space-between;
+        margin-bottom: 36px; padding-bottom: 20px;
+        border-bottom: 1px solid var(--border); position: relative;
+    }
+    .admin-page .page-header::after {
+        content: ''; position: absolute; bottom: -1px; left: 0;
+        width: 120px; height: 1px;
+        background: linear-gradient(90deg, var(--accent-blue), transparent);
+    }
+    .admin-page .page-header h3 {
+        font-size: 22px; font-weight: 600; letter-spacing: -0.3px; margin: 0 0 4px 0;
+    }
+    .admin-page .page-header p {
+        font-size: 12px; color: var(--text-secondary); margin: 0;
+    }
 
-<div class="d-flex flex-wrap gap-2">
-    <a class="btn btn-outline-light" href="/admin/opc-endpoints">OPC Endpoints</a>
-    <a class="btn btn-outline-light" href="/admin/machines">Machines</a>
-    <a class="btn btn-outline-light" href="/admin/ui-dashboards">Dashobord</a>
-    <a class="btn btn-outline-light" href="/admin/cycle-rules">Cycle Rules</a>
-    <a class="btn btn-outline-light" href="/admin/analytics">Analytics KPI</a>
-    <a class="btn btn-outline-light" href="/admin/analytics-reports">Rapports</a>
+    /* ── Section label ── */
+    .admin-page .section-label {
+        font-size: 10px; font-weight: 700; color: var(--text-muted);
+        text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;
+    }
+
+    /* ── Nav Grid ── */
+    .admin-page .nav-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        margin-bottom: 32px;
+    }
+    @@media (max-width: 900px) { .admin-page .nav-grid { grid-template-columns: repeat(2, 1fr); } }
+    @@media (max-width: 560px) { .admin-page .nav-grid { grid-template-columns: 1fr; } }
+
+    /* ── Nav Card ── */
+    .admin-page .nav-card {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px 18px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        text-decoration: none;
+        color: var(--text-primary);
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+        animation: adminFadeUp 0.4s ease both;
+    }
+    .admin-page .nav-card::before {
+        content: '';
+        position: absolute; inset: 0;
+        background: linear-gradient(135deg, var(--card-accent-dim, rgba(35,139,230,0.04)), transparent);
+        opacity: 0; transition: opacity 0.2s;
+    }
+    .admin-page .nav-card:hover {
+        border-color: var(--card-accent, var(--accent-blue));
+        box-shadow: 0 4px 20px rgba(0,0,0,0.35), 0 0 0 1px rgba(var(--card-accent-rgb, 35,139,230), 0.12);
+        transform: translateY(-2px);
+        color: var(--text-primary);
+        text-decoration: none;
+    }
+    .admin-page .nav-card:hover::before { opacity: 1; }
+
+    /* accent per card */
+    .admin-page .nav-card.c-blue   { --card-accent: #238be6; --card-accent-dim: rgba(35,139,230,0.06); --card-accent-rgb: 35,139,230; }
+    .admin-page .nav-card.c-cyan   { --card-accent: #58c4dc; --card-accent-dim: rgba(88,196,220,0.06);  --card-accent-rgb: 88,196,220; }
+    .admin-page .nav-card.c-green  { --card-accent: #1f8a5e; --card-accent-dim: rgba(31,138,94,0.08);   --card-accent-rgb: 31,138,94; }
+    .admin-page .nav-card.c-pink   { --card-accent: #e879a0; --card-accent-dim: rgba(232,121,160,0.06); --card-accent-rgb: 232,121,160; }
+    .admin-page .nav-card.c-orange { --card-accent: #d97706; --card-accent-dim: rgba(217,119,6,0.06);   --card-accent-rgb: 217,119,6; }
+    .admin-page .nav-card.c-violet { --card-accent: #a78bfa; --card-accent-dim: rgba(167,139,250,0.06); --card-accent-rgb: 167,139,250; }
+
+    @@keyframes adminFadeUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .admin-page .nav-card:nth-child(1) { animation-delay: 0.05s; }
+    .admin-page .nav-card:nth-child(2) { animation-delay: 0.10s; }
+    .admin-page .nav-card:nth-child(3) { animation-delay: 0.15s; }
+    .admin-page .nav-card:nth-child(4) { animation-delay: 0.20s; }
+    .admin-page .nav-card:nth-child(5) { animation-delay: 0.25s; }
+    .admin-page .nav-card:nth-child(6) { animation-delay: 0.30s; }
+
+    /* ── Icon box ── */
+    .admin-page .nav-icon {
+        width: 42px; height: 42px; border-radius: 9px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px; flex-shrink: 0;
+        background: var(--card-accent-dim, rgba(35,139,230,0.1));
+        border: 1px solid rgba(var(--card-accent-rgb, 35,139,230), 0.2);
+        transition: transform 0.2s;
+    }
+    .admin-page .nav-card:hover .nav-icon { transform: scale(1.08); }
+
+    /* ── Text ── */
+    .admin-page .nav-text { flex: 1; min-width: 0; }
+    .admin-page .nav-title {
+        font-size: 14px; font-weight: 600; color: var(--text-primary);
+        margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .admin-page .nav-desc {
+        font-size: 11px; color: var(--text-secondary); line-height: 1.4;
+    }
+
+    /* ── Arrow ── */
+    .admin-page .nav-arrow {
+        font-size: 14px; color: var(--text-muted);
+        transition: color 0.2s, transform 0.2s; flex-shrink: 0;
+    }
+    .admin-page .nav-card:hover .nav-arrow {
+        color: var(--card-accent, var(--accent-blue));
+        transform: translateX(3px);
+    }
+</style>
+
+<div class="admin-page">
+
+    <div class="page-header">
+        <div>
+            <h3>Administration</h3>
+            <p>Gestion du catalogue OPC, des machines et des paramètres UI.</p>
+        </div>
+    </div>
+
+    <div class="section-label">Infrastructure OPC-UA</div>
+    <div class="nav-grid">
+
+        <a class="nav-card c-blue" href="/admin/opc-endpoints">
+            <div class="nav-icon">🔌</div>
+            <div class="nav-text">
+                <div class="nav-title">OPC Endpoints</div>
+                <div class="nav-desc">Connexions OPC-UA, URLs et statuts</div>
+            </div>
+            <span class="nav-arrow">›</span>
+        </a>
+
+        <a class="nav-card c-cyan" href="/admin/machines">
+            <div class="nav-icon">⚙</div>
+            <div class="nav-text">
+                <div class="nav-title">Machines</div>
+                <div class="nav-desc">Gestion des machines et tag mappings</div>
+            </div>
+            <span class="nav-arrow">›</span>
+        </a>
+
+        <a class="nav-card c-pink" href="/admin/cycle-rules">
+            <div class="nav-icon">🔄</div>
+            <div class="nav-text">
+                <div class="nav-title">Cycle Rules</div>
+                <div class="nav-desc">Règles de détection des cycles de production</div>
+            </div>
+            <span class="nav-arrow">›</span>
+        </a>
+
+    </div>
+
+    <div class="section-label">Analytics & Visualisation</div>
+    <div class="nav-grid">
+
+        <a class="nav-card c-green" href="/admin/analytics">
+            <div class="nav-icon">📊</div>
+            <div class="nav-text">
+                <div class="nav-title">Analytics KPI</div>
+                <div class="nav-desc">Définitions et items de KPIs de production</div>
+            </div>
+            <span class="nav-arrow">›</span>
+        </a>
+
+        <a class="nav-card c-orange" href="/admin/analytics-reports">
+            <div class="nav-icon">📋</div>
+            <div class="nav-text">
+                <div class="nav-title">Rapports Analytics</div>
+                <div class="nav-desc">Résultats et résumés de cycles calculés</div>
+            </div>
+            <span class="nav-arrow">›</span>
+        </a>
+
+        <a class="nav-card c-violet" href="/admin/ui-dashboards">
+            <div class="nav-icon">🖥</div>
+            <div class="nav-text">
+                <div class="nav-title">UI Dashboards</div>
+                <div class="nav-desc">Zones, widgets et bindings de données</div>
+            </div>
+            <span class="nav-arrow">›</span>
+        </a>
+
+    </div>
+
 </div>

@@ -8,48 +8,255 @@
 @inject mes_opc_ui.Services.ClientEndpoints Endpoints
 @inject NavigationManager NavigationManager
 
-<h2 class="mb-4">Dynamic Dashboard</h2>
-
-<div class="mb-3">
-    <span class="badge @(Hub.IsConnected ? "bg-success" : "bg-secondary")">
-        Realtime: @(Hub.IsConnected ? "Connected" : "Disconnected")
-    </span>
-    @if (!string.IsNullOrWhiteSpace(_rtError) || !string.IsNullOrWhiteSpace(Hub.LastError))
-    {
-        <span class="badge bg-danger ms-2">@(_rtError ?? Hub.LastError)</span>
-        <button class="btn btn-sm btn-outline-primary ms-2" @onclick="Reconnect">Reconnect</button>
+<style>
+    .db-page {
+        --bg-card:         #161b22;
+        --bg-elevated:     #1c2128;
+        --border:          #21262d;
+        --border-bright:   #30363d;
+        --accent-blue:     #238be6;
+        --accent-blue-dim: rgba(35, 139, 230, 0.15);
+        --green-badge-bg:  #1f8a5e;
+        --tag-bg:          #122535;
+        --tag-txt:         #58c4dc;
+        --red:             #da3633;
+        --red-dim:         rgba(218,54,51,0.15);
+        --text-primary:    #e6edf3;
+        --text-secondary:  #7d8590;
+        --text-muted:      #3d444d;
+        font-family: 'DM Sans', sans-serif;
+        color: var(--text-primary);
     }
-</div>
 
-@if (_loading)
-{
-    <div class="alert alert-info">Loading dashboard configuration…</div>
-}
-else if (_dashboard is null)
-{
-    <div class="alert alert-warning">
-        No dashboard found in SQL.
-        <div class="small mt-2">Run the SQL script <code>05_Tools/Mes.Opc.Admin.Seed/sql/ui_schema_and_seed.sql</code> to create a default dashboard.</div>
+    /* ── Header ── */
+    .db-page .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 28px;
+        padding-bottom: 18px;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .db-page .page-header::after {
+        content: '';
+        position: absolute; bottom: -1px; left: 0;
+        width: 140px; height: 1px;
+        background: linear-gradient(90deg, var(--accent-blue), transparent);
+    }
+    .db-page .page-header h2 {
+        font-size: 22px; font-weight: 600; letter-spacing: -0.3px; margin: 0;
+    }
+
+    /* ── Status Bar ── */
+    .db-page .status-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .db-page .status-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+        border: 1px solid transparent;
+    }
+    .db-page .status-chip .dot {
+        width: 6px; height: 6px;
+        border-radius: 50%;
+    }
+    .db-page .status-connected {
+        background: rgba(31,138,94,0.12);
+        border-color: rgba(31,138,94,0.3);
+        color: #4ade80;
+    }
+    .db-page .status-connected .dot {
+        background: #4ade80;
+        box-shadow: 0 0 6px #4ade80;
+        animation: dbPulse 2s ease infinite;
+    }
+    .db-page .status-disconnected {
+        background: rgba(125,133,144,0.1);
+        border-color: var(--border-bright);
+        color: var(--text-secondary);
+    }
+    .db-page .status-disconnected .dot { background: var(--text-muted); }
+    .db-page .status-error {
+        background: var(--red-dim);
+        border-color: rgba(218,54,51,0.3);
+        color: #f87171;
+    }
+    .db-page .status-error .dot { background: var(--red); animation: dbPulse 1s ease infinite; }
+
+    @@keyframes dbPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .db-page .db-btn-reconnect {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 600;
+        cursor: pointer; transition: all 0.15s; font-family: inherit;
+        background: transparent; color: var(--accent-blue);
+        border: 1px solid var(--accent-blue);
+    }
+    .db-page .db-btn-reconnect:hover { background: var(--accent-blue-dim); }
+
+    /* ── Alerts ── */
+    .db-page .db-alert {
+        border-radius: 10px; padding: 16px 20px; font-size: 13px; margin-bottom: 24px;
+    }
+    .db-page .db-alert-info {
+        background: var(--accent-blue-dim);
+        border: 1px solid rgba(35,139,230,0.25);
+        color: #7db8f0;
+    }
+    .db-page .db-alert-warning {
+        background: rgba(217,119,6,0.1);
+        border: 1px solid rgba(217,119,6,0.3);
+        color: #fbbf24;
+    }
+    .db-page .db-alert code {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        background: rgba(0,0,0,0.25);
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: var(--tag-txt);
+    }
+    .db-page .db-alert-title {
+        font-weight: 600; font-size: 14px; margin-bottom: 6px;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .db-page .db-alert-sub { font-size: 12px; opacity: 0.8; margin-top: 6px; }
+
+    /* ── Zone Card ── */
+    .db-page .zone-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 20px;
+        animation: dbFadeUp 0.4s ease both;
+        position: relative;
+    }
+    .db-page .zone-card::before {
+        content: '';
+        position: absolute; top: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(35,139,230,0.12), transparent);
+    }
+    @@keyframes dbFadeUp {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .db-page .zone-card:nth-child(1) { animation-delay: 0.05s; }
+    .db-page .zone-card:nth-child(2) { animation-delay: 0.12s; }
+    .db-page .zone-card:nth-child(3) { animation-delay: 0.19s; }
+    .db-page .zone-card:nth-child(4) { animation-delay: 0.26s; }
+
+    /* ── Zone Header ── */
+    .db-page .zone-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 20px;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-elevated);
+    }
+    .db-page .zone-header-dot {
+        width: 7px; height: 7px; border-radius: 50%;
+        background: var(--accent-blue);
+        box-shadow: 0 0 8px rgba(35,139,230,0.5);
+        flex-shrink: 0;
+    }
+    .db-page .zone-title {
+        font-size: 13px; font-weight: 600;
+        color: var(--text-primary); letter-spacing: 0.1px;
+    }
+
+    /* ── Zone Body ── */
+    .db-page .zone-body {
+        padding: 16px 18px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 14px;
+    }
+</style>
+
+<div class="db-page">
+
+    @* ── Page Header ── *@
+    <div class="page-header">
+        <h2>Dashboard</h2>
+
+        <div class="status-bar">
+            @if (Hub.IsConnected)
+            {
+                <span class="status-chip status-connected">
+                    <span class="dot"></span> Realtime connecté
+                </span>
+            }
+            else
+            {
+                <span class="status-chip status-disconnected">
+                    <span class="dot"></span> Realtime déconnecté
+                </span>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_rtError) || !string.IsNullOrWhiteSpace(Hub.LastError))
+            {
+                <span class="status-chip status-error">
+                    <span class="dot"></span> @(_rtError ?? Hub.LastError)
+                </span>
+                <button class="db-btn-reconnect" @onclick="Reconnect">↻ Reconnect</button>
+            }
+        </div>
     </div>
-}
-else
-{
-    foreach (var zone in _dashboard.Zones)
-    {
-        <section class="zone-card mb-4">
-            <div class="zone-title">@zone.Title</div>
-            <div class="row g-3">
-                @foreach (var widget in zone.Widgets)
-                {
-                    <div class="col-12 col-md-6 col-xl-4">
-                        <WidgetRenderer Widget="widget" />
 
-                    </div>
-                }
-            </div>
-        </section>
+    @* ── States ── *@
+    @if (_loading)
+    {
+        <div class="db-alert db-alert-info">
+            <div class="db-alert-title">⏳ Chargement…</div>
+            Récupération de la configuration du dashboard en cours.
+        </div>
     }
-}
+    else if (_dashboard is null)
+    {
+        <div class="db-alert db-alert-warning">
+            <div class="db-alert-title">⚠ Aucun dashboard trouvé</div>
+            <div class="db-alert-sub">
+                Exécutez le script SQL pour créer un dashboard par défaut :<br />
+                <code>05_Tools/Mes.Opc.Admin.Seed/sql/ui_schema_and_seed.sql</code>
+            </div>
+        </div>
+    }
+    else
+    {
+        @foreach (var zone in _dashboard.Zones)
+        {
+            <section class="zone-card">
+                <div class="zone-header">
+                    <span class="zone-header-dot"></span>
+                    <span class="zone-title">@zone.Title</span>
+                </div>
+                <div class="zone-body">
+                    @foreach (var widget in zone.Widgets)
+                    {
+                        <WidgetRenderer Widget="widget" />
+                    }
+                </div>
+            </section>
+        }
+    }
+
+</div>
 
 @code {
     private bool _loading = true;
@@ -59,37 +266,26 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        // Re-render whenever Store values change
         Store.Changed += OnStoreChanged;
         Hub.StateChanged += OnHubStateChanged;
         Hub.WidgetUpdated += Store.OnWidgetUpdate;
         try
         {
             _dashboard = await Ui.GetDefaultDashboardAsync();
-
             if (_dashboard is not null)
-            {
-                // Build fast routing maps (Widget <-> Tag) in memory
                 Store.Configure(_dashboard);
-            }
         }
-        finally
-        {
-            _loading = false;
-        }
+        finally { _loading = false; }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // Démarrer une fois, dès que le dashboard est chargé (peu importe firstRender)
-        if (_hubStarted || _dashboard is null)
-            return;
-
+        if (_hubStarted || _dashboard is null) return;
         try
         {
             var baseUrl = Endpoints.RealtimeBaseUrl;
             if (string.IsNullOrWhiteSpace(baseUrl))
-                throw new InvalidOperationException("RealtimeBaseUrl is not set. Check wwwroot/appsettings.json (RealtimeBaseUrl / ApiBaseUrl).");
+                throw new InvalidOperationException("RealtimeBaseUrl is not set. Check wwwroot/appsettings.json.");
 
             await Hub.StartAsync(baseUrl);
 
@@ -115,17 +311,14 @@ else
         }
     }
 
-
     private async Task Reconnect()
     {
         _hubStarted = false;
         _rtError = null;
         await InvokeAsync(StateHasChanged);
-        // Let OnAfterRenderAsync retry
     }
 
     private void OnStoreChanged() => InvokeAsync(StateHasChanged);
-
     private void OnHubStateChanged() => InvokeAsync(StateHasChanged);
 
     public void Dispose()

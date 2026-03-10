@@ -4,132 +4,544 @@
 @inject UiAdminApiClient Api
 @inject NavigationManager Nav
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <h3 class="mb-0">UI Management</h3>
-        <small class="text-muted">DashboardId: @DashboardId</small>
-    </div>
-    <button class="btn btn-outline-secondary" @onclick="Back">Retour</button>
-</div>
+<style>
+    /* ── Variables (identical design system) ── */
+    .um-page {
+        --bg-card:         #161b22;
+        --bg-elevated:     #1c2128;
+        --border:          #21262d;
+        --border-bright:   #30363d;
+        --accent-blue:     #238be6;
+        --accent-blue-dim: rgba(35, 139, 230, 0.15);
+        --green-badge-bg:  #1f8a5e;
+        --tag-bg:          #122535;
+        --tag-txt:         #58c4dc;
+        --tag-border:      #1d4a65;
+        --scope-pink:      #e879a0;
+        --red:             #da3633;
+        --red-dim:         rgba(218, 54, 51, 0.15);
+        --text-primary:    #e6edf3;
+        --text-secondary:  #7d8590;
+        --text-muted:      #3d444d;
+        font-family: 'DM Sans', sans-serif;
+        color: var(--text-primary);
+    }
 
-@if (!string.IsNullOrWhiteSpace(Error))
-{
-    <div class="alert alert-danger">@Error</div>
-}
+    /* ── Header ── */
+    .um-page .page-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        margin-bottom: 28px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+    }
+    .um-page .page-header::after {
+        content: '';
+        position: absolute;
+        bottom: -1px; left: 0;
+        width: 120px; height: 1px;
+        background: linear-gradient(90deg, var(--accent-blue), transparent);
+    }
+    .um-page .page-header h3 {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.3px;
+        color: var(--text-primary);
+        margin: 0 0 4px 0;
+    }
+    .um-page .page-header p {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 300;
+        margin: 0;
+        font-family: 'JetBrains Mono', monospace;
+    }
 
-<div class="row g-3">
-    <div class="col-12 col-lg-4">
-        <div class="card shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <strong>Zones</strong>
-                <button class="btn btn-sm btn-primary" @onclick="NewZone">+ Zone</button>
-            </div>
+    /* ── Buttons ── */
+    .um-page .um-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 14px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        border: 1px solid transparent;
+        font-family: inherit;
+        line-height: 1.4;
+    }
+    .um-page .um-btn-primary {
+        background: var(--accent-blue);
+        color: #fff;
+        border-color: var(--accent-blue);
+    }
+    .um-page .um-btn-primary:hover {
+        background: #3a9ef5;
+        box-shadow: 0 0 14px rgba(35,139,230,0.35);
+        transform: translateY(-1px);
+    }
+    .um-page .um-btn-primary:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+    .um-page .um-btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+        border-color: var(--border-bright);
+    }
+    .um-page .um-btn-ghost:hover {
+        color: var(--text-primary);
+        border-color: var(--accent-blue);
+        background: var(--accent-blue-dim);
+    }
+    .um-page .um-btn-outline {
+        background: transparent;
+        color: var(--accent-blue);
+        border-color: var(--accent-blue);
+        font-size: 11px;
+        padding: 3px 10px;
+    }
+    .um-page .um-btn-outline:hover { background: var(--accent-blue-dim); }
+    .um-page .um-btn-danger-sm {
+        background: transparent;
+        color: var(--red);
+        border-color: var(--red);
+        font-size: 11px;
+        padding: 3px 10px;
+    }
+    .um-page .um-btn-danger-sm:hover { background: var(--red-dim); }
+    .um-page .um-btn-danger {
+        background: var(--red);
+        color: #fff;
+        border-color: var(--red);
+    }
+    .um-page .um-btn-danger:hover {
+        background: #f04340;
+        box-shadow: 0 0 12px rgba(218,54,51,0.35);
+        transform: translateY(-1px);
+    }
 
-            <div class="list-group list-group-flush">
-                @if (Zones is null)
-                {
-                    <div class="p-3 text-muted">Chargement...</div>
-                }
-                else if (Zones.Count == 0)
-                {
-                    <div class="p-3 text-muted">Aucune zone.</div>
-                }
-                else
-                {
-                    @foreach (var z in Zones.OrderBy(x => x.OrderIndex))
-                    {
-                        var active = (z.Id == SelectedZoneId);
-                        <button class="list-group-item list-group-item-action @(active ? "active" : "")"
-                                @onclick="() => SelectZone(z.Id)">
-                            <div class="d-flex justify-content-between">
-                                <div class="text-truncate">
-                                    <div class="fw-semibold">@z.Title</div>
-                                    <div class="small opacity-75">@z.LayoutType • Order @z.OrderIndex</div>
-                                </div>
-                                <div class="ms-2 d-flex gap-1">
-                                    <span class="badge text-bg-light">Widgets</span>
-                                </div>
-                            </div>
+    /* ── Alert ── */
+    .um-page .um-alert-danger {
+        background: rgba(218,54,51,0.1);
+        border: 1px solid rgba(218,54,51,0.3);
+        color: #f87171;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 13px;
+        margin-bottom: 16px;
+    }
 
-                            <div class="mt-2 d-flex gap-2">
-                                <button type="button" class="btn btn-sm btn-outline-light" @onclick:stopPropagation="true" @onclick="() => EditZone(z)">Edit</button>
-                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick:stopPropagation="true" @onclick="() => DeleteZone(z.Id)">Del</button>
-                            </div>
-                        </button>
-                    }
-                }
-            </div>
+    /* ── 3-column layout ── */
+    .um-page .three-col {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        align-items: start;
+    }
+    @@media (max-width: 1100px) { .um-page .three-col { grid-template-columns: 1fr 1fr; } }
+    @@media (max-width: 700px)  { .um-page .three-col { grid-template-columns: 1fr; } }
+
+    /* ── Panel Card ── */
+    .um-page .panel-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        animation: umFadeUp 0.35s ease both;
+    }
+    .um-page .panel-card:nth-child(1) { animation-delay: 0.05s; }
+    .um-page .panel-card:nth-child(2) { animation-delay: 0.10s; }
+    .um-page .panel-card:nth-child(3) { animation-delay: 0.15s; }
+
+    @@keyframes umFadeUp {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .um-page .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-elevated);
+    }
+    .um-page .panel-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .um-page .panel-count {
+        display: inline-flex;
+        align-items: center;
+        padding: 1px 7px;
+        border-radius: 10px;
+        background: var(--accent-blue-dim);
+        border: 1px solid rgba(35,139,230,0.2);
+        color: var(--accent-blue);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 700;
+    }
+
+    /* ── List Items ── */
+    .um-page .list-empty {
+        padding: 16px;
+        font-size: 12px;
+        color: var(--text-muted);
+        font-style: italic;
+    }
+    .um-page .list-item {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 12px 16px;
+        border: none;
+        border-bottom: 1px solid var(--border);
+        background: transparent;
+        cursor: pointer;
+        transition: background 0.15s;
+        font-family: inherit;
+        color: var(--text-primary);
+    }
+    .um-page .list-item:last-child { border-bottom: none; }
+    .um-page .list-item:hover { background: rgba(35,139,230,0.05); }
+    .um-page .list-item.active {
+        background: var(--accent-blue-dim);
+        border-left: 2px solid var(--accent-blue);
+        padding-left: 14px;
+    }
+    .um-page .list-item-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+    .um-page .list-item-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .um-page .list-item-sub {
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-top: 2px;
+    }
+    .um-page .list-item-actions {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    /* ── Bindings Table ── */
+    .um-page .bindings-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+    }
+    .um-page .bindings-table th {
+        text-align: left;
+        padding: 8px 14px;
+        color: var(--text-secondary);
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-elevated);
+        white-space: nowrap;
+    }
+    .um-page .bindings-table td {
+        padding: 9px 14px;
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+    }
+    .um-page .bindings-table tbody tr:last-child td { border-bottom: none; }
+    .um-page .bindings-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+    .um-page .cell-machine {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--tag-txt);
+    }
+    .um-page .cell-role {
+        font-size: 11px;
+        color: var(--scope-pink);
+        font-weight: 600;
+    }
+    .um-page .cell-nodeid {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        color: var(--text-primary);
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: block;
+    }
+    .um-page .cell-actions-td {
+        white-space: nowrap;
+        text-align: right;
+    }
+    .um-page .cell-actions-td .um-btn { margin-left: 4px; }
+
+    /* ── Modal ── */
+    .um-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.65);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: umFadeIn 0.15s ease;
+    }
+    @@keyframes umFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .um-modal {
+        background: var(--bg-card);
+        border: 1px solid var(--border-bright);
+        border-radius: 12px;
+        width: 100%;
+        max-width: 460px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+        animation: umSlideUp 0.2s ease;
+        font-family: 'DM Sans', sans-serif;
+        color: var(--text-primary);
+    }
+    @@keyframes umSlideUp {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .um-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 15px 20px;
+        border-bottom: 1px solid var(--border);
+    }
+    .um-modal-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+    }
+    .um-modal-close {
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 18px;
+        cursor: pointer;
+        padding: 2px 6px;
+        border-radius: 4px;
+        line-height: 1;
+        transition: color 0.15s;
+    }
+    .um-modal-close:hover { color: var(--text-primary); }
+    .um-modal-body { padding: 20px; }
+    .um-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 14px 20px;
+        border-top: 1px solid var(--border);
+    }
+    .um-modal .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        margin-bottom: 14px;
+    }
+    .um-modal .form-group label {
+        font-size: 11px;
+        color: var(--text-secondary);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+    .um-modal .um-input {
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-bright);
+        color: var(--text-primary);
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 13px;
+        font-family: inherit;
+        width: 100%;
+        transition: border-color 0.15s;
+    }
+    .um-modal .um-input:focus {
+        outline: none;
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 0 2px var(--accent-blue-dim);
+    }
+    .um-modal .um-input.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .um-modal .validation-errors {
+        background: var(--red-dim);
+        border: 1px solid rgba(218,54,51,0.3);
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 12px;
+        color: #f87171;
+        margin-bottom: 14px;
+    }
+</style>
+
+<div class="um-page">
+
+    @* ── Page Header ── *@
+    <div class="page-header">
+        <div>
+            <h3>UI Management</h3>
+            <p>Dashboard : @DashboardId</p>
         </div>
+        <button class="um-btn um-btn-ghost" @onclick="Back">← Retour</button>
     </div>
 
-    <div class="col-12 col-lg-4">
-        <div class="card shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <strong>Widgets</strong>
-                <button class="btn btn-sm btn-primary" @onclick="NewWidget" disabled="@(SelectedZoneId==Guid.Empty)">+ Widget</button>
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="um-alert-danger">@Error</div>
+    }
+
+    <div class="three-col">
+
+        @* ── Zones Panel ── *@
+        <div class="panel-card">
+            <div class="panel-header">
+                <div class="panel-title">
+                    Zones
+                    @if (Zones is not null)
+                    {
+                        <span class="panel-count">@Zones.Count</span>
+                    }
+                </div>
+                <button class="um-btn um-btn-primary" style="padding:4px 12px;font-size:12px;" @onclick="NewZone">+ Zone</button>
+            </div>
+
+            @if (Zones is null)
+            {
+                <div class="list-empty">Chargement...</div>
+            }
+            else if (Zones.Count == 0)
+            {
+                <div class="list-empty">Aucune zone.</div>
+            }
+            else
+            {
+                @foreach (var z in Zones.OrderBy(x => x.OrderIndex))
+                {
+                    var active = z.Id == SelectedZoneId;
+                    <button class="list-item @(active ? "active" : "")" @onclick="() => SelectZone(z.Id)">
+                        <div class="list-item-top">
+                            <div>
+                                <div class="list-item-title">@z.Title</div>
+                                <div class="list-item-sub">@z.LayoutType · ordre @z.OrderIndex</div>
+                            </div>
+                            <div class="list-item-actions">
+                                <button type="button" class="um-btn um-btn-outline"
+                                        @onclick:stopPropagation="true" @onclick="() => EditZone(z)">Edit</button>
+                                <button type="button" class="um-btn um-btn-danger-sm"
+                                        @onclick:stopPropagation="true" @onclick="() => DeleteZone(z.Id)">Suppr.</button>
+                            </div>
+                        </div>
+                    </button>
+                }
+            }
+        </div>
+
+        @* ── Widgets Panel ── *@
+        <div class="panel-card">
+            <div class="panel-header">
+                <div class="panel-title">
+                    Widgets
+                    @if (Widgets is not null)
+                    {
+                        <span class="panel-count">@Widgets.Count</span>
+                    }
+                </div>
+                <button class="um-btn um-btn-primary" style="padding:4px 12px;font-size:12px;"
+                        @onclick="NewWidget" disabled="@(SelectedZoneId == Guid.Empty)">+ Widget</button>
             </div>
 
             @if (SelectedZoneId == Guid.Empty)
             {
-                <div class="p-3 text-muted">Sélectionne une zone.</div>
+                <div class="list-empty">Sélectionne une zone.</div>
             }
             else if (Widgets is null)
             {
-                <div class="p-3 text-muted">Chargement...</div>
+                <div class="list-empty">Chargement...</div>
             }
             else if (Widgets.Count == 0)
             {
-                <div class="p-3 text-muted">Aucun widget.</div>
+                <div class="list-empty">Aucun widget.</div>
             }
             else
             {
-                <div class="list-group list-group-flush">
-                    @foreach (var w in Widgets.OrderBy(x => x.OrderIndex))
-                    {
-                        var activeW = (w.Id == SelectedWidgetId);
-                        <button class="list-group-item list-group-item-action @(activeW ? "active" : "")"
-                                @onclick="() => SelectWidget(w.Id)">
-                            <div class="d-flex justify-content-between">
-                                <div class="text-truncate">
-                                    <div class="fw-semibold">@w.Title</div>
-                                    <div class="small opacity-75">@w.WidgetType • Order @w.OrderIndex</div>
-                                </div>
+                @foreach (var w in Widgets.OrderBy(x => x.OrderIndex))
+                {
+                    var activeW = w.Id == SelectedWidgetId;
+                    <button class="list-item @(activeW ? "active" : "")" @onclick="() => SelectWidget(w.Id)">
+                        <div class="list-item-top">
+                            <div>
+                                <div class="list-item-title">@w.Title</div>
+                                <div class="list-item-sub">@w.WidgetType · ordre @w.OrderIndex</div>
                             </div>
-
-                            <div class="mt-2 d-flex gap-2">
-                                <button type="button" class="btn btn-sm btn-outline-light" @onclick:stopPropagation="true" @onclick="() => EditWidget(w)">Edit</button>
-                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick:stopPropagation="true" @onclick="() => DeleteWidget(w.Id)">Del</button>
+                            <div class="list-item-actions">
+                                <button type="button" class="um-btn um-btn-outline"
+                                        @onclick:stopPropagation="true" @onclick="() => EditWidget(w)">Edit</button>
+                                <button type="button" class="um-btn um-btn-danger-sm"
+                                        @onclick:stopPropagation="true" @onclick="() => DeleteWidget(w.Id)">Suppr.</button>
                             </div>
-                        </button>
-                    }
-                </div>
+                        </div>
+                    </button>
+                }
             }
         </div>
-    </div>
 
-    <div class="col-12 col-lg-4">
-        <div class="card shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <strong>Bindings</strong>
-                <button class="btn btn-sm btn-primary" @onclick="NewBinding" disabled="@(SelectedWidgetId==Guid.Empty)">+ Binding</button>
+        @* ── Bindings Panel ── *@
+        <div class="panel-card">
+            <div class="panel-header">
+                <div class="panel-title">
+                    Bindings
+                    @if (Bindings is not null)
+                    {
+                        <span class="panel-count">@Bindings.Count</span>
+                    }
+                </div>
+                <button class="um-btn um-btn-primary" style="padding:4px 12px;font-size:12px;"
+                        @onclick="NewBinding" disabled="@(SelectedWidgetId == Guid.Empty)">+ Binding</button>
             </div>
 
             @if (SelectedWidgetId == Guid.Empty)
             {
-                <div class="p-3 text-muted">Sélectionne un widget.</div>
+                <div class="list-empty">Sélectionne un widget.</div>
             }
             else if (Bindings is null)
             {
-                <div class="p-3 text-muted">Chargement...</div>
+                <div class="list-empty">Chargement...</div>
             }
             else if (Bindings.Count == 0)
             {
-                <div class="p-3 text-muted">Aucun binding.</div>
+                <div class="list-empty">Aucun binding.</div>
             }
             else
             {
-                <div class="table-responsive">
-                    <table class="table table-sm mb-0">
+                <div style="overflow-x:auto;">
+                    <table class="bindings-table">
                         <thead>
                             <tr>
                                 <th>Machine</th>
@@ -142,12 +554,12 @@
                             @foreach (var b in Bindings)
                             {
                                 <tr>
-                                    <td>@b.MachineCode</td>
-                                    <td>@b.BindingRole</td>
-                                    <td style="max-width:260px; word-break:break-all;">@b.OpcNodeId</td>
-                                    <td class="text-end">
-                                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => EditBinding(b)">Edit</button>
-                                        <button class="btn btn-sm btn-outline-danger ms-1" @onclick="() => DeleteBinding(b.Id)">Del</button>
+                                    <td><span class="cell-machine">@b.MachineCode</span></td>
+                                    <td><span class="cell-role">@b.BindingRole</span></td>
+                                    <td><span class="cell-nodeid">@b.OpcNodeId</span></td>
+                                    <td class="cell-actions-td">
+                                        <button class="um-btn um-btn-outline" @onclick="() => EditBinding(b)">Edit</button>
+                                        <button class="um-btn um-btn-danger-sm" @onclick="() => DeleteBinding(b.Id)">Suppr.</button>
                                     </td>
                                 </tr>
                             }
@@ -156,144 +568,123 @@
                 </div>
             }
         </div>
+
     </div>
-</div>
 
-@* Modal Zone *@
-@if (ZoneForm is not null)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,.5);">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@(ZoneEditId==Guid.Empty ? "Créer Zone" : "Modifier Zone")</h5>
-                    <button class="btn-close" @onclick="CloseZone"></button>
+    @* ── Modal Zone ── *@
+    @if (ZoneForm is not null)
+    {
+        <div class="um-modal-backdrop" @onclick="CloseZone">
+            <div class="um-modal" @onclick:stopPropagation>
+                <div class="um-modal-header">
+                    <h5 class="um-modal-title">@(ZoneEditId == Guid.Empty ? "+ Créer Zone" : "✏ Modifier Zone")</h5>
+                    <button class="um-modal-close" @onclick="CloseZone">✕</button>
                 </div>
-
                 <EditForm Model="ZoneForm" OnValidSubmit="SaveZone">
                     <DataAnnotationsValidator />
-                    <div class="modal-body">
-                        <ValidationSummary />
-
-                        <div class="mb-2">
-                            <label class="form-label">Title</label>
-                            <InputText class="form-control" @bind-Value="ZoneForm.Title" />
+                    <div class="um-modal-body">
+                        <ValidationSummary class="validation-errors" />
+                        <div class="form-group">
+                            <label>Title</label>
+                            <InputText class="um-input" @bind-Value="ZoneForm.Title" placeholder="Nom de la zone" />
                         </div>
-
-                        <div class="mb-2">
-                            <label class="form-label">LayoutType</label>
-                            <InputText class="form-control" @bind-Value="ZoneForm.LayoutType" />
+                        <div class="form-group">
+                            <label>Layout Type</label>
+                            <InputText class="um-input" @bind-Value="ZoneForm.LayoutType" placeholder="ex: grid, flex" />
                         </div>
-
-                        <div class="mb-2">
-                            <label class="form-label">PropsJson</label>
-                            <InputText class="form-control" @bind-Value="ZoneForm.PropsJson" />
+                        <div class="form-group">
+                            <label>Props JSON</label>
+                            <InputText class="um-input mono" @bind-Value="ZoneForm.PropsJson" placeholder="{}" />
                         </div>
-
-                        <div class="mb-2">
-                            <label class="form-label">OrderIndex</label>
-                            <InputNumber class="form-control" TValue="int" @bind-Value="ZoneForm.OrderIndex" />
+                        <div class="form-group">
+                            <label>Order Index</label>
+                            <InputNumber class="um-input" TValue="int" @bind-Value="ZoneForm.OrderIndex" />
                         </div>
                     </div>
-
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseZone">Annuler</button>
-                        <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    <div class="um-modal-footer">
+                        <button type="button" class="um-btn um-btn-ghost" @onclick="CloseZone">Annuler</button>
+                        <button type="submit" class="um-btn um-btn-primary">Enregistrer</button>
                     </div>
                 </EditForm>
             </div>
         </div>
-    </div>
-}
+    }
 
-@* Modal Widget *@
-@if (WidgetForm is not null)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,.5);">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@(WidgetEditId==Guid.Empty ? "Créer Widget" : "Modifier Widget")</h5>
-                    <button class="btn-close" @onclick="CloseWidget"></button>
+    @* ── Modal Widget ── *@
+    @if (WidgetForm is not null)
+    {
+        <div class="um-modal-backdrop" @onclick="CloseWidget">
+            <div class="um-modal" @onclick:stopPropagation>
+                <div class="um-modal-header">
+                    <h5 class="um-modal-title">@(WidgetEditId == Guid.Empty ? "+ Créer Widget" : "✏ Modifier Widget")</h5>
+                    <button class="um-modal-close" @onclick="CloseWidget">✕</button>
                 </div>
-
                 <EditForm Model="WidgetForm" OnValidSubmit="SaveWidget">
                     <DataAnnotationsValidator />
-                    <div class="modal-body">
-                        <ValidationSummary />
-
-                        <div class="mb-2">
-                            <label class="form-label">Title</label>
-                            <InputText class="form-control" @bind-Value="WidgetForm.Title" />
+                    <div class="um-modal-body">
+                        <ValidationSummary class="validation-errors" />
+                        <div class="form-group">
+                            <label>Title</label>
+                            <InputText class="um-input" @bind-Value="WidgetForm.Title" placeholder="Nom du widget" />
                         </div>
-
-                        <div class="mb-2">
-                            <label class="form-label">WidgetType</label>
-                            <InputText class="form-control" @bind-Value="WidgetForm.WidgetType" />
+                        <div class="form-group">
+                            <label>Widget Type</label>
+                            <InputText class="um-input" @bind-Value="WidgetForm.WidgetType" placeholder="ex: gauge, chart" />
                         </div>
-
-                        <div class="mb-2">
-                            <label class="form-label">PropsJson</label>
-                            <InputText class="form-control" @bind-Value="WidgetForm.PropsJson" />
+                        <div class="form-group">
+                            <label>Props JSON</label>
+                            <InputText class="um-input mono" @bind-Value="WidgetForm.PropsJson" placeholder="{}" />
                         </div>
-
-                        <div class="mb-2">
-                            <label class="form-label">OrderIndex</label>
-                            <InputNumber class="form-control" TValue="int" @bind-Value="WidgetForm.OrderIndex" />
+                        <div class="form-group">
+                            <label>Order Index</label>
+                            <InputNumber class="um-input" TValue="int" @bind-Value="WidgetForm.OrderIndex" />
                         </div>
                     </div>
-
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseWidget">Annuler</button>
-                        <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    <div class="um-modal-footer">
+                        <button type="button" class="um-btn um-btn-ghost" @onclick="CloseWidget">Annuler</button>
+                        <button type="submit" class="um-btn um-btn-primary">Enregistrer</button>
                     </div>
                 </EditForm>
             </div>
         </div>
-    </div>
-}
+    }
 
-@* Modal Binding *@
-@if (BindingForm is not null)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,.5);">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@(BindingEditId==Guid.Empty ? "Créer Binding" : "Modifier Binding")</h5>
-                    <button class="btn-close" @onclick="CloseBinding"></button>
+    @* ── Modal Binding ── *@
+    @if (BindingForm is not null)
+    {
+        <div class="um-modal-backdrop" @onclick="CloseBinding">
+            <div class="um-modal" @onclick:stopPropagation>
+                <div class="um-modal-header">
+                    <h5 class="um-modal-title">@(BindingEditId == Guid.Empty ? "+ Créer Binding" : "✏ Modifier Binding")</h5>
+                    <button class="um-modal-close" @onclick="CloseBinding">✕</button>
                 </div>
-
                 <EditForm Model="BindingForm" OnValidSubmit="SaveBinding">
                     <DataAnnotationsValidator />
-                    <div class="modal-body">
-                        <ValidationSummary />
-
-                        <div class="mb-2">
-                            <label class="form-label">MachineCode</label>
-                            <InputText class="form-control" @bind-Value="BindingForm.MachineCode" />
+                    <div class="um-modal-body">
+                        <ValidationSummary class="validation-errors" />
+                        <div class="form-group">
+                            <label>Machine Code</label>
+                            <InputText class="um-input mono" @bind-Value="BindingForm.MachineCode" placeholder="MC_03" />
                         </div>
-
-                        <div class="mb-2">
-                            <label class="form-label">OpcNodeId</label>
-                            <InputText class="form-control" @bind-Value="BindingForm.OpcNodeId" />
+                        <div class="form-group">
+                            <label>OPC Node Id</label>
+                            <InputText class="um-input mono" @bind-Value="BindingForm.OpcNodeId" placeholder="ns=2;i=..." />
                         </div>
-
-                        <div class="mb-2">
-                            <label class="form-label">BindingRole</label>
-                            <InputText class="form-control" @bind-Value="BindingForm.BindingRole" />
+                        <div class="form-group">
+                            <label>Binding Role</label>
+                            <InputText class="um-input" @bind-Value="BindingForm.BindingRole" placeholder="ex: value, label" />
                         </div>
                     </div>
-
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseBinding">Annuler</button>
-                        <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    <div class="um-modal-footer">
+                        <button type="button" class="um-btn um-btn-ghost" @onclick="CloseBinding">Annuler</button>
+                        <button type="submit" class="um-btn um-btn-primary">Enregistrer</button>
                     </div>
                 </EditForm>
             </div>
         </div>
-    </div>
-}
+    }
+
+</div>
 
 @code {
     [Parameter] public Guid DashboardId { get; set; }
@@ -323,17 +714,15 @@
     {
         Error = null;
         Zones = null;
-
         SelectedZoneId = Guid.Empty;
         SelectedWidgetId = Guid.Empty;
         Widgets = null;
         Bindings = null;
-
         try { Zones = await Api.GetZonesAsync(DashboardId) ?? []; }
         catch (Exception ex) { Error = ex.Message; Zones = []; }
     }
 
-    // Zones
+    // ── Zones ──
     private void NewZone() { ZoneEditId = Guid.Empty; ZoneForm = new UiZoneCreateDto(); }
     private void EditZone(UiZoneDto z) { ZoneEditId = z.Id; ZoneForm = new UiZoneCreateDto { Title = z.Title, LayoutType = z.LayoutType, PropsJson = z.PropsJson, OrderIndex = z.OrderIndex }; }
     private void CloseZone() => ZoneForm = null;
@@ -347,7 +736,6 @@
                 await Api.CreateZoneAsync(DashboardId, ZoneForm);
             else
                 await Api.UpdateZoneAsync(ZoneEditId, new UiZoneUpdateDto { Title = ZoneForm.Title, LayoutType = ZoneForm.LayoutType, PropsJson = ZoneForm.PropsJson, OrderIndex = ZoneForm.OrderIndex });
-
             CloseZone();
             await LoadZones();
         }
@@ -365,12 +753,11 @@
         SelectedZoneId = zoneId;
         SelectedWidgetId = Guid.Empty;
         Bindings = null;
-
         try { Widgets = await Api.GetWidgetsAsync(zoneId) ?? []; }
         catch (Exception ex) { Error = ex.Message; Widgets = []; }
     }
 
-    // Widgets
+    // ── Widgets ──
     private void NewWidget() { if (SelectedZoneId == Guid.Empty) return; WidgetEditId = Guid.Empty; WidgetForm = new UiWidgetCreateDto(); }
     private void EditWidget(UiWidgetDto w) { WidgetEditId = w.Id; WidgetForm = new UiWidgetCreateDto { Title = w.Title, WidgetType = w.WidgetType, PropsJson = w.PropsJson, OrderIndex = w.OrderIndex }; }
     private void CloseWidget() => WidgetForm = null;
@@ -379,14 +766,12 @@
     {
         if (WidgetForm is null) return;
         if (SelectedZoneId == Guid.Empty) { Error = "Sélectionne une zone."; return; }
-
         try
         {
             if (WidgetEditId == Guid.Empty)
                 await Api.CreateWidgetAsync(SelectedZoneId, WidgetForm);
             else
                 await Api.UpdateWidgetAsync(WidgetEditId, new UiWidgetUpdateDto { Title = WidgetForm.Title, WidgetType = WidgetForm.WidgetType, PropsJson = WidgetForm.PropsJson, OrderIndex = WidgetForm.OrderIndex });
-
             CloseWidget();
             await SelectZone(SelectedZoneId);
         }
@@ -406,7 +791,7 @@
         catch (Exception ex) { Error = ex.Message; Bindings = []; }
     }
 
-    // Bindings
+    // ── Bindings ──
     private void NewBinding() { if (SelectedWidgetId == Guid.Empty) return; BindingEditId = Guid.Empty; BindingForm = new UiWidgetBindingCreateDto(); }
     private void EditBinding(UiWidgetBindingDto b) { BindingEditId = b.Id; BindingForm = new UiWidgetBindingCreateDto { MachineCode = b.MachineCode, OpcNodeId = b.OpcNodeId, BindingRole = b.BindingRole }; }
     private void CloseBinding() => BindingForm = null;
@@ -415,14 +800,12 @@
     {
         if (BindingForm is null) return;
         if (SelectedWidgetId == Guid.Empty) { Error = "Sélectionne un widget."; return; }
-
         try
         {
             if (BindingEditId == Guid.Empty)
                 await Api.CreateBindingAsync(SelectedWidgetId, BindingForm);
             else
                 await Api.UpdateBindingAsync(BindingEditId, new UiWidgetBindingUpdateDto { MachineCode = BindingForm.MachineCode, OpcNodeId = BindingForm.OpcNodeId, BindingRole = BindingForm.BindingRole });
-
             CloseBinding();
             await SelectWidget(SelectedWidgetId);
         }
