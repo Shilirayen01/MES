@@ -6,104 +6,219 @@
 
 <style>
     .tm-page {
-        --bg-card:         #161b22;
-        --bg-elevated:     #1c2128;
-        --border:          #21262d;
-        --border-bright:   #30363d;
-        --accent-blue:     #238be6;
-        --accent-blue-dim: rgba(35, 139, 230, 0.15);
-        --green-badge-bg:  #1f8a5e;
-        --tag-bg:          #122535;
-        --tag-txt:         #58c4dc;
-        --tag-border:      #1d4a65;
-        --scope-pink:      #e879a0;
-        --red:             #da3633;
-        --red-dim:         rgba(218, 54, 51, 0.15);
-        --orange:          #d97706;
-        --orange-dim:      rgba(217,119,6,0.12);
-        --text-primary:    #e6edf3;
-        --text-secondary:  #7d8590;
-        --text-muted:      #3d444d;
-        font-family: 'DM Sans', sans-serif;
-        color: var(--text-primary);
+        --white:       #ffffff;
+        --bg-soft:     #f8fafc;
+        --border:      #e8edf5;
+        --border-soft: #f1f5f9;
+        --accent:      #1e40af;
+        --accent-dim:  rgba(30,64,175,0.07);
+        --green-bg:    #d1fae5;
+        --green-txt:   #065f46;
+        --green-bdr:   #a7f3d0;
+        --tag-bg:      #dbeafe;
+        --tag-txt:     #1e40af;
+        --tag-bdr:     #bfdbfe;
+        --pink:        #be185d;
+        --orange:      #d97706;
+        --orange-bg:   #fffbeb;
+        --orange-bdr:  #fde68a;
+        --orange-txt:  #92400e;
+        --red:         #dc2626;
+        --red-bg:      rgba(220,38,38,0.07);
+        --red-bdr:     #fecaca;
+        --text-900:    #0f172a;
+        --text-navy:   #1e4d7b;
+        --text-muted:  #64748b;
+        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color: var(--text-900);
     }
+
+    /* ── Header ── */
     .tm-page .page-header {
         display: flex; align-items: flex-end; justify-content: space-between;
-        margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border); position: relative;
+        margin-bottom: 28px; padding-bottom: 18px; border-bottom: 1px solid var(--border);
     }
-    .tm-page .page-header::after {
-        content: ''; position: absolute; bottom: -1px; left: 0;
-        width: 120px; height: 1px; background: linear-gradient(90deg, var(--accent-blue), transparent);
+    .tm-page .page-header h3 {
+        font-size: 24px; font-weight: 800; letter-spacing: -0.5px;
+        color: var(--text-900); margin: 0 0 5px 0;
+        display: flex; align-items: center; gap: 10px;
     }
-    .tm-page .page-header h3 { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; margin: 0 0 4px 0; display: flex; align-items: center; gap: 10px; }
-    .tm-page .page-header p { font-size: 12px; color: var(--text-secondary); margin: 0; }
+    .tm-page .page-header p { font-size: 13px; color: var(--text-navy); margin: 0; }
     .tm-page .header-machine {
         font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700;
-        color: var(--tag-txt); background: var(--tag-bg); border: 1px solid var(--tag-border);
-        padding: 2px 10px; border-radius: 5px;
+        color: var(--accent); background: var(--tag-bg);
+        border: 1px solid var(--tag-bdr); padding: 2px 10px; border-radius: 6px;
     }
-    .tm-page .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
-    .tm-page .toolbar-sep { width: 1px; height: 24px; background: var(--border-bright); }
+
+    /* ── Toolbar ── */
+    .tm-page .toolbar {
+        display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;
+    }
+    .tm-page .toolbar-sep { width: 1px; height: 22px; background: var(--border); }
+
+    /* ── Buttons ── */
     .tm-page .tm-btn {
-        display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px;
-        border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer;
-        transition: all 0.18s ease; border: 1px solid transparent; font-family: inherit; line-height: 1.4;
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+        cursor: pointer; transition: all 0.15s; border: 1px solid transparent;
+        font-family: inherit; line-height: 1.4;
     }
-    .tm-page .tm-btn-primary { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
-    .tm-page .tm-btn-primary:hover { background: #3a9ef5; box-shadow: 0 0 14px rgba(35,139,230,0.35); transform: translateY(-1px); }
-    .tm-page .tm-btn-ghost { background: transparent; color: var(--text-secondary); border-color: var(--border-bright); }
-    .tm-page .tm-btn-ghost:hover { color: var(--text-primary); border-color: var(--accent-blue); background: var(--accent-blue-dim); }
-    .tm-page .tm-btn-sm { font-size: 11px; padding: 3px 10px; }
-    .tm-page .tm-btn-outline { background: transparent; color: var(--accent-blue); border-color: var(--accent-blue); }
-    .tm-page .tm-btn-outline:hover { background: var(--accent-blue-dim); }
-    .tm-page .tm-btn-warn { background: transparent; color: var(--orange); border-color: var(--orange); }
-    .tm-page .tm-btn-warn:hover { background: var(--orange-dim); }
+    .tm-page .tm-btn-primary {
+        background: var(--accent); color: #fff; border-color: var(--accent);
+    }
+    .tm-page .tm-btn-primary:hover {
+        background: #1e3a8a; box-shadow: 0 4px 14px rgba(30,64,175,0.25); transform: translateY(-1px);
+    }
+    .tm-page .tm-btn-ghost {
+        background: var(--white); color: var(--text-muted); border-color: var(--border);
+    }
+    .tm-page .tm-btn-ghost:hover {
+        color: var(--text-900); border-color: #c8d2e0; background: var(--bg-soft);
+    }
+    .tm-page .tm-btn-sm { font-size: 11px; padding: 4px 10px; border-radius: 6px; }
+    .tm-page .tm-btn-outline {
+        background: var(--accent-dim); color: var(--accent); border-color: var(--tag-bdr);
+    }
+    .tm-page .tm-btn-outline:hover { background: var(--tag-bg); }
+    .tm-page .tm-btn-warn {
+        background: var(--orange-bg); color: var(--orange-txt); border-color: var(--orange-bdr);
+    }
+    .tm-page .tm-btn-warn:hover { background: #fef3c7; }
+
+    /* ── Alert ── */
     .tm-page .tm-alert-danger {
-        background: rgba(218,54,51,0.1); border: 1px solid rgba(218,54,51,0.3);
-        color: #f87171; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px;
+        background: var(--red-bg); border: 1px solid var(--red-bdr);
+        color: var(--red); border-radius: 10px; padding: 12px 16px;
+        font-size: 13px; margin-bottom: 16px;
     }
-    .tm-page .loading-text { color: var(--text-secondary); font-size: 13px; }
-    .tm-page .table-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 24px; }
+    .tm-page .loading-text { color: var(--text-navy); font-size: 13px; }
+
+    /* ── Table Card ── */
+    .tm-page .table-card {
+        background: var(--white); border: 1px solid var(--border);
+        border-radius: 14px; overflow: hidden; margin-bottom: 24px;
+        box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+    }
     .tm-page .table-scroll { overflow-x: auto; }
+    .tm-page .table-scroll::-webkit-scrollbar { height: 4px; }
+    .tm-page .table-scroll::-webkit-scrollbar-track { background: var(--bg-soft); }
+    .tm-page .table-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
     .tm-page .tm-table { width: 100%; border-collapse: collapse; font-size: 12px; }
     .tm-page .tm-table th {
         text-align: left; padding: 10px 14px; white-space: nowrap;
-        color: var(--text-secondary); font-size: 11px; font-weight: 600;
-        text-transform: uppercase; letter-spacing: 0.4px;
-        border-bottom: 1px solid var(--border); background: var(--bg-elevated);
+        color: var(--text-navy); font-size: 10px; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.5px;
+        border: 1px solid #1e3a5f; background: var(--bg-soft);
     }
-    .tm-page .tm-table td { padding: 10px 14px; color: var(--text-primary); border-bottom: 1px solid var(--border); vertical-align: middle; }
-    .tm-page .tm-table tbody tr:last-child td { border-bottom: none; }
-    .tm-page .tm-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
-    .tm-page .cell-id { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); font-weight: 600; }
-    .tm-page .cell-nodeid { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--tag-txt); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
-    .tm-page .cell-char { font-size: 12px; color: var(--scope-pink); font-weight: 600; }
-    .tm-page .cell-type { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary); }
-    .tm-page .cell-num { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary); text-align: right; display: block; }
-    .tm-page .badge-active { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; background: var(--green-badge-bg); color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; }
-    .tm-page .badge-active::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.5); animation: tmPulse 2s ease infinite; }
-    .tm-page .badge-inactive { display: inline-flex; padding: 2px 8px; border-radius: 4px; background: rgba(125,133,144,0.1); border: 1px solid var(--border-bright); color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+    .tm-page .tm-table td {
+        padding: 11px 14px; color: var(--text-900);
+        border: 1px solid #1e3a5f; vertical-align: middle;
+        white-space: normal; word-break: break-word;
+    }
+    .tm-page .tm-table tbody tr:hover td { background: #eff6ff; }
+
+    .tm-page .cell-id {
+        font-family: 'JetBrains Mono', monospace; font-size: 11px;
+        color: var(--text-muted); font-weight: 600;
+    }
+    .tm-page .cell-nodeid {
+        font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent);
+        white-space: normal; word-break: break-all; display: block;
+    }
+    .tm-page .cell-char { font-size: 12px; color: var(--pink); font-weight: 700; }
+    .tm-page .cell-type {
+        font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-navy);
+    }
+    .tm-page .cell-num {
+        font-family: 'JetBrains Mono', monospace; font-size: 11px;
+        color: var(--text-navy); text-align: right; display: block;
+    }
+    .tm-page .badge-active {
+        display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px;
+        border-radius: 6px; background: var(--green-bg); border: 1px solid var(--green-bdr);
+        color: var(--green-txt); font-size: 10px; font-weight: 700; text-transform: uppercase;
+    }
+    .tm-page .badge-active::before {
+        content: ''; width: 5px; height: 5px; border-radius: 50%;
+        background: var(--green-txt); animation: tmPulse 2s ease infinite;
+    }
+    .tm-page .badge-inactive {
+        display: inline-flex; padding: 3px 9px; border-radius: 6px;
+        background: var(--bg-soft); border: 1px solid var(--border);
+        color: var(--text-muted); font-size: 10px; font-weight: 700; text-transform: uppercase;
+    }
     @@keyframes tmPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     .tm-page .cell-actions { display: flex; gap: 6px; white-space: nowrap; }
-    .tm-page .form-panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 24px; animation: tmFadeUp 0.25s ease; }
+
+    /* ── Form Panel ── */
+    .tm-page .form-panel {
+        background: var(--white); border: 1px solid var(--border);
+        border-radius: 14px; overflow: hidden; margin-bottom: 24px;
+        box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+        border-top: 3px solid var(--accent);
+        animation: tmFadeUp 0.25s ease;
+    }
     @@keyframes tmFadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-    .tm-page .form-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 20px; border-bottom: 1px solid var(--border); background: var(--bg-elevated); }
-    .tm-page .form-panel-title { font-size: 14px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
-    .tm-page .form-panel-title .edit-id { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--tag-txt); background: var(--tag-bg); border: 1px solid var(--tag-border); padding: 1px 7px; border-radius: 4px; }
-    .tm-page .form-panel-body { padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px 16px; }
-    .tm-page .form-section-label { font-size: 10px; font-weight: 700; color: var(--accent-blue); text-transform: uppercase; letter-spacing: 0.8px; grid-column: 1 / -1; padding-bottom: 6px; position: relative; margin-top: 4px; }
-    .tm-page .form-section-label::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, var(--accent-blue), transparent); }
+
+    .tm-page .form-panel-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--bg-soft);
+    }
+    .tm-page .form-panel-title {
+        font-size: 14px; font-weight: 700; color: var(--text-900);
+        display: flex; align-items: center; gap: 8px;
+    }
+    .tm-page .form-panel-title .edit-id {
+        font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent);
+        background: var(--tag-bg); border: 1px solid var(--tag-bdr); padding: 1px 7px; border-radius: 5px;
+    }
+
+    .tm-page .form-panel-body {
+        padding: 20px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 14px 16px;
+    }
+    .tm-page .form-section-label {
+        font-size: 11px; font-weight: 700; color: var(--accent);
+        text-transform: uppercase; letter-spacing: 0.6px;
+        grid-column: 1 / -1; padding-bottom: 6px;
+        position: relative; margin-top: 6px;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .tm-page .form-section-label::after {
+        content: ''; flex: 1; height: 1px; background: var(--border);
+    }
     .tm-page .form-group { display: flex; flex-direction: column; gap: 5px; }
-    .tm-page .form-group label { font-size: 11px; color: var(--text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: 0.4px; }
+    .tm-page .form-group label {
+        font-size: 11px; color: var(--text-navy); font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.5px;
+    }
     .tm-page .form-group.full-width { grid-column: 1 / -1; }
-    .tm-page .tm-input { background: var(--bg-elevated); border: 1px solid var(--border-bright); color: var(--text-primary); border-radius: 6px; padding: 7px 10px; font-size: 13px; font-family: inherit; width: 100%; transition: border-color 0.15s; }
+    .tm-page .tm-input {
+        background: var(--bg-soft); border: 1.5px solid var(--border);
+        color: var(--text-900); border-radius: 8px; padding: 8px 10px;
+        font-size: 13px; font-family: inherit; width: 100%; transition: border-color 0.15s;
+    }
     .tm-page .tm-input.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
-    .tm-page .tm-input:focus { outline: none; border-color: var(--accent-blue); box-shadow: 0 0 0 2px var(--accent-blue-dim); }
+    .tm-page .tm-input:focus {
+        outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim);
+    }
     .tm-page .form-check-row { display: flex; align-items: center; gap: 8px; padding-top: 22px; }
-    .tm-page .form-check-row input[type="checkbox"] { accent-color: var(--accent-blue); width: 15px; height: 15px; cursor: pointer; }
-    .tm-page .form-check-row label { font-size: 13px; color: var(--text-primary); cursor: pointer; }
-    .tm-page .form-panel-footer { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--border); }
-    .tm-page .validation-errors { background: var(--red-dim); border: 1px solid rgba(218,54,51,0.3); border-radius: 6px; padding: 8px 12px; font-size: 12px; color: #f87171; grid-column: 1 / -1; }
+    .tm-page .form-check-row input[type="checkbox"] {
+        accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer;
+    }
+    .tm-page .form-check-row label { font-size: 13px; color: var(--text-900); cursor: pointer; }
+    .tm-page .form-panel-footer {
+        display: flex; align-items: center; gap: 10px;
+        padding: 14px 20px; border-top: 1px solid var(--border); background: var(--bg-soft);
+    }
+    .tm-page .validation-errors {
+        background: var(--red-bg); border: 1px solid var(--red-bdr);
+        border-radius: 8px; padding: 8px 12px; font-size: 12px;
+        color: var(--red); grid-column: 1 / -1;
+    }
 </style>
 
 <div class="tm-page">
@@ -119,7 +234,7 @@
         <button class="tm-btn tm-btn-primary" @onclick="New">+ Nouveau Mapping</button>
         <div class="toolbar-sep"></div>
         <button class="tm-btn tm-btn-ghost" @onclick="Back">← Retour Machines</button>
-        <button class="tm-btn tm-btn-ghost" @onclick="Load">↻ Rafraîchir</button>
+        <button class="tm-btn tm-btn-ghost" @onclick="Load">Rafraîchir</button>
     </div>
 
     @if (Error is not null)
@@ -164,7 +279,7 @@
                                 </td>
                                 <td>
                                     <div class="cell-actions">
-                                        <button class="tm-btn tm-btn-outline tm-btn-sm" @onclick="() => Edit(t)">✏ Edit</button>
+                                        <button class="tm-btn tm-btn-outline tm-btn-sm" @onclick="() => Edit(t)">Edit</button>
                                         <button class="tm-btn tm-btn-warn tm-btn-sm" @onclick="() => Deactivate(t)">Désactiver</button>
                                     </div>
                                 </td>
@@ -182,7 +297,7 @@
         <div class="form-panel">
             <div class="form-panel-header">
                 <div class="form-panel-title">+ Créer Mapping</div>
-                <button class="tm-btn tm-btn-ghost tm-btn-sm" @onclick="Cancel">✕ Fermer</button>
+                <button class="tm-btn tm-btn-ghost tm-btn-sm" @onclick="Cancel">Fermer</button>
             </div>
             <EditForm Model="CreateForm" OnValidSubmit="SaveCreate">
                 <DataAnnotationsValidator />
@@ -242,9 +357,9 @@
         <div class="form-panel">
             <div class="form-panel-header">
                 <div class="form-panel-title">
-                    ✏ Modifier Mapping <span class="edit-id">#@EditId</span>
+                    Modifier Mapping <span class="edit-id">#@EditId</span>
                 </div>
-                <button class="tm-btn tm-btn-ghost tm-btn-sm" @onclick="Cancel">✕ Fermer</button>
+                <button class="tm-btn tm-btn-ghost tm-btn-sm" @onclick="Cancel">Fermer</button>
             </div>
             <EditForm Model="UpdateForm" OnValidSubmit="SaveUpdate">
                 <DataAnnotationsValidator />

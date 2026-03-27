@@ -1,188 +1,113 @@
-﻿@page "/admin/ui-dashboards"
+@page "/admin/ui-dashboards"
 @using mes_opc_ui.Services.AdminApi
 @using Microsoft.AspNetCore.Components.Forms
 @inject UiAdminApiClient Api
 @inject NavigationManager Nav
 
 <style>
-    /* ── Variables (identical design system) ── */
     .ud-page {
-        --bg-card:         #161b22;
-        --bg-elevated:     #1c2128;
-        --border:          #21262d;
-        --border-bright:   #30363d;
-        --accent-blue:     #238be6;
-        --accent-blue-dim: rgba(35, 139, 230, 0.15);
-        --green-badge-bg:  #1f8a5e;
-        --tag-bg:          #122535;
-        --tag-txt:         #58c4dc;
-        --tag-border:      #1d4a65;
-        --red:             #da3633;
-        --red-dim:         rgba(218, 54, 51, 0.15);
-        --text-primary:    #e6edf3;
-        --text-secondary:  #7d8590;
-        --text-muted:      #3d444d;
-        font-family: 'DM Sans', sans-serif;
-        color: var(--text-primary);
+        --white:       #ffffff;
+        --bg-soft:     #f8fafc;
+        --border:      #e8edf5;
+        --border-soft: #f1f5f9;
+        --accent:      #1e40af;
+        --accent-dim:  rgba(30,64,175,0.07);
+        --green-bg:    #d1fae5;
+        --green-txt:   #065f46;
+        --green-bdr:   #a7f3d0;
+        --tag-bg:      #dbeafe;
+        --tag-txt:     #1e40af;
+        --tag-bdr:     #bfdbfe;
+        --red:         #dc2626;
+        --red-bg:      rgba(220,38,38,0.07);
+        --red-bdr:     #fecaca;
+        --text-900:    #0f172a;
+        --text-navy:   #1e4d7b;
+        --text-muted:  #64748b;
+        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color: var(--text-900);
     }
 
     /* ── Header ── */
     .ud-page .page-header {
-        display: flex;
-        align-items: flex-end;
-        justify-content: space-between;
-        margin-bottom: 28px;
-        padding-bottom: 20px;
-        border-bottom: 1px solid var(--border);
-        position: relative;
-    }
-    .ud-page .page-header::after {
-        content: '';
-        position: absolute;
-        bottom: -1px; left: 0;
-        width: 120px; height: 1px;
-        background: linear-gradient(90deg, var(--accent-blue), transparent);
+        display: flex; align-items: flex-end; justify-content: space-between;
+        margin-bottom: 28px; padding-bottom: 18px; border-bottom: 1px solid var(--border);
     }
     .ud-page .page-header h3 {
-        font-size: 22px;
-        font-weight: 600;
-        letter-spacing: -0.3px;
-        color: var(--text-primary);
-        margin: 0 0 4px 0;
+        font-size: 24px; font-weight: 800; letter-spacing: -0.5px;
+        color: var(--text-900); margin: 0 0 5px 0;
     }
-    .ud-page .page-header p {
-        font-size: 12px;
-        color: var(--text-secondary);
-        font-weight: 300;
-        margin: 0;
-    }
+    .ud-page .page-header p { font-size: 13px; color: var(--text-navy); margin: 0; }
 
     /* ── Buttons ── */
     .ud-page .ud-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 7px 16px;
-        border-radius: 6px;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.18s ease;
-        border: 1px solid transparent;
-        font-family: inherit;
-        line-height: 1.4;
-        text-decoration: none;
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+        cursor: pointer; transition: all 0.15s; border: 1px solid transparent;
+        font-family: inherit; line-height: 1.4; text-decoration: none;
     }
     .ud-page .ud-btn-primary {
-        background: var(--accent-blue);
-        color: #fff;
-        border-color: var(--accent-blue);
+        background: var(--accent); color: #fff; border-color: var(--accent);
     }
     .ud-page .ud-btn-primary:hover {
-        background: #3a9ef5;
-        box-shadow: 0 0 16px rgba(35,139,230,0.35);
-        transform: translateY(-1px);
+        background: #1e3a8a; box-shadow: 0 4px 14px rgba(30,64,175,0.25); transform: translateY(-1px);
     }
     .ud-page .ud-btn-ghost {
-        background: transparent;
-        color: var(--text-secondary);
-        border-color: var(--border-bright);
+        background: var(--white); color: var(--text-muted); border-color: var(--border);
     }
     .ud-page .ud-btn-ghost:hover {
-        color: var(--text-primary);
-        border-color: var(--accent-blue);
-        background: var(--accent-blue-dim);
+        color: var(--text-900); border-color: #c8d2e0; background: var(--bg-soft);
     }
     .ud-page .ud-btn-outline {
-        background: transparent;
-        color: var(--accent-blue);
-        border-color: var(--accent-blue);
-        font-size: 12px;
-        padding: 5px 12px;
+        background: var(--accent-dim); color: var(--accent);
+        border-color: var(--tag-bdr); font-size: 12px; padding: 5px 12px; border-radius: 7px;
     }
-    .ud-page .ud-btn-outline:hover { background: var(--accent-blue-dim); }
+    .ud-page .ud-btn-outline:hover { background: var(--tag-bg); }
     .ud-page .ud-btn-danger {
-        background: var(--red);
-        color: #fff;
-        border-color: var(--red);
-        font-size: 12px;
-        padding: 5px 12px;
+        background: var(--red); color: #fff; border-color: var(--red);
+        font-size: 12px; padding: 5px 12px;
     }
     .ud-page .ud-btn-danger:hover {
-        background: #f04340;
-        box-shadow: 0 0 12px rgba(218,54,51,0.35);
-        transform: translateY(-1px);
+        background: #b91c1c; box-shadow: 0 4px 12px rgba(220,38,38,0.25); transform: translateY(-1px);
     }
     .ud-page .ud-btn-icon {
-        background: transparent;
-        color: var(--text-secondary);
-        border-color: var(--border-bright);
-        padding: 5px 9px;
-        font-size: 13px;
+        background: var(--bg-soft); color: var(--text-muted);
+        border-color: var(--border); padding: 5px 10px; font-size: 13px; border-radius: 7px;
     }
     .ud-page .ud-btn-icon:hover {
-        color: var(--text-primary);
-        border-color: var(--accent-blue);
-        background: var(--accent-blue-dim);
+        color: var(--accent); border-color: var(--tag-bdr); background: var(--accent-dim);
     }
 
     /* ── Alert ── */
     .ud-page .ud-alert-danger {
-        background: rgba(218,54,51,0.1);
-        border: 1px solid rgba(218,54,51,0.3);
-        color: #f87171;
-        border-radius: 8px;
-        padding: 10px 14px;
-        font-size: 13px;
-        margin-bottom: 16px;
+        background: var(--red-bg); border: 1px solid var(--red-bdr);
+        color: var(--red); border-radius: 10px; padding: 12px 16px;
+        font-size: 13px; margin-bottom: 16px;
     }
-    .ud-page .loading-text {
-        color: var(--text-secondary);
-        font-size: 13px;
-        padding: 8px 0;
-    }
+    .ud-page .loading-text { color: var(--text-navy); font-size: 13px; padding: 8px 0; }
 
     /* ── Dashboard Grid ── */
     .ud-page .dash-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 16px;
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
     }
     @@media (max-width: 1100px) { .ud-page .dash-grid { grid-template-columns: repeat(2, 1fr); } }
     @@media (max-width: 700px)  { .ud-page .dash-grid { grid-template-columns: 1fr; } }
 
     /* ── Dashboard Card ── */
     .ud-page .dash-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+        background: var(--white); border: 1px solid var(--border);
+        border-radius: 14px; overflow: hidden; display: flex; flex-direction: column;
+        transition: box-shadow 0.2s, transform 0.2s;
         animation: udFadeUp 0.4s ease both;
-        position: relative;
+        box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+        cursor: pointer;
     }
     .ud-page .dash-card:hover {
-        border-color: var(--border-bright);
-        box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(35,139,230,0.08);
-        transform: translateY(-1px);
+        box-shadow: 0 6px 24px rgba(15,23,42,0.10); transform: translateY(-2px);
     }
-    .ud-page .dash-card::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0; height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(35,139,230,0.2), transparent);
-        opacity: 0;
-        transition: opacity 0.2s;
-    }
-    .ud-page .dash-card:hover::before { opacity: 1; }
     .ud-page .dash-card.is-default {
-        border-color: rgba(31,138,94,0.4);
-    }
-    .ud-page .dash-card.is-default::before {
-        background: linear-gradient(90deg, transparent, rgba(31,138,94,0.3), transparent);
-        opacity: 1;
+        border-color: var(--green-bdr);
+        border-top: 3px solid var(--green-txt);
     }
 
     @@keyframes udFadeUp {
@@ -197,245 +122,116 @@
     .ud-page .dash-card:nth-child(6) { animation-delay: 0.30s; }
 
     /* ── Card Body ── */
-    .ud-page .dash-card-body {
-        padding: 16px 18px;
-        flex: 1;
-    }
+    .ud-page .dash-card-body { padding: 18px 18px 14px; flex: 1; }
     .ud-page .dash-card-top {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 10px;
-        margin-bottom: 10px;
+        display: flex; align-items: flex-start; justify-content: space-between;
+        gap: 10px; margin-bottom: 10px;
     }
     .ud-page .dash-card-title {
-        font-size: 15px;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin: 0 0 4px 0;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
+        font-size: 15px; font-weight: 700; color: var(--text-900);
+        margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     }
     .ud-page .badge-default {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 2px 9px;
-        border-radius: 4px;
-        background: var(--green-badge-bg);
-        color: #fff;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 0.4px;
-        text-transform: uppercase;
+        display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px;
+        border-radius: 5px; background: var(--green-bg); border: 1px solid var(--green-bdr);
+        color: var(--green-txt); font-size: 10px; font-weight: 700; text-transform: uppercase;
     }
     .ud-page .badge-default::before {
-        content: '';
-        width: 5px; height: 5px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.5);
-        animation: udPulse 2s ease infinite;
+        content: ''; width: 5px; height: 5px; border-radius: 50%;
+        background: var(--green-txt); animation: udPulse 2s ease infinite;
     }
-    @@keyframes udPulse {
-        0%, 100% { opacity: 1; }
-        50%       { opacity: 0.4; }
-    }
+    @@keyframes udPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     .ud-page .dash-card-desc {
-        font-size: 12px;
-        color: var(--text-secondary);
-        min-height: 2em;
-        line-height: 1.5;
+        font-size: 12px; color: var(--text-navy); min-height: 2em; line-height: 1.5;
     }
 
-    /* ── Card Actions row ── */
+    /* ── Card Actions ── */
     .ud-page .dash-card-actions {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        margin-top: 14px;
+        display: flex; gap: 8px; align-items: center; margin-top: 14px;
     }
-    .ud-page .dash-card-actions .ud-btn-outline {
-        flex: 1;
-        justify-content: center;
-    }
-
-    /* ── Dropdown ── */
-    .ud-page .ud-dropdown {
-        position: relative;
-    }
-    .ud-page .ud-dropdown-menu {
-        display: none;
-        position: absolute;
-        right: 0; top: calc(100% + 6px);
-        background: var(--bg-elevated);
-        border: 1px solid var(--border-bright);
-        border-radius: 8px;
-        min-width: 160px;
-        z-index: 100;
-        overflow: hidden;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    }
-    .ud-page .ud-dropdown.open .ud-dropdown-menu { display: block; }
-    .ud-page .ud-dropdown-item {
-        display: block;
-        width: 100%;
-        padding: 8px 14px;
-        font-size: 13px;
-        color: var(--text-primary);
-        background: transparent;
-        border: none;
-        text-align: left;
-        cursor: pointer;
-        transition: background 0.12s;
-        font-family: inherit;
-    }
-    .ud-page .ud-dropdown-item:hover { background: rgba(35,139,230,0.1); color: var(--accent-blue); }
-    .ud-page .ud-dropdown-divider { border-top: 1px solid var(--border); margin: 4px 0; }
-    .ud-page .ud-dropdown-item.danger { color: var(--red); }
-    .ud-page .ud-dropdown-item.danger:hover { background: var(--red-dim); }
+    .ud-page .dash-card-actions .ud-btn-outline { flex: 1; justify-content: center; }
 
     /* ── Card Footer ── */
     .ud-page .dash-card-footer {
-        padding: 9px 18px;
-        border-top: 1px solid var(--border);
-        font-size: 11px;
-        color: var(--text-muted);
-        font-family: 'JetBrains Mono', monospace;
+        padding: 9px 18px; border-top: 1px solid var(--border-soft);
+        font-size: 11px; color: var(--text-muted);
+        font-family: 'JetBrains Mono', monospace; background: var(--bg-soft);
     }
 
-    /* ── Modal ── */
+    /* ── Modal backdrop ── */
     .ud-modal-backdrop {
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.6);
-        z-index: 1000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        position: fixed; inset: 0;
+        background: rgba(15,23,42,0.45);
+        backdrop-filter: blur(2px);
+        z-index: 1000; display: flex; align-items: center; justify-content: center;
         animation: udFadeIn 0.15s ease;
     }
-    @@keyframes udFadeIn {
-        from { opacity: 0; }
-        to   { opacity: 1; }
-    }
+    @@keyframes udFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
     .ud-modal {
-        background: var(--bg-card);
-        border: 1px solid var(--border-bright);
-        border-radius: 12px;
-        width: 100%;
-        max-width: 460px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+        background: var(--white); border: 1px solid var(--border);
+        border-radius: 16px; width: 100%; max-width: 460px;
+        box-shadow: 0 20px 50px rgba(15,23,42,0.18);
         animation: udSlideUp 0.2s ease;
-        font-family: 'DM Sans', sans-serif;
-        color: var(--text-primary);
+        font-family: 'DM Sans', sans-serif; color: var(--text-900);
+        border-top: 3px solid var(--accent);
     }
     @@keyframes udSlideUp {
         from { opacity: 0; transform: translateY(16px); }
         to   { opacity: 1; transform: translateY(0); }
     }
     .ud-modal-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 16px 20px;
-        border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 16px 20px; border-bottom: 1px solid var(--border);
+        background: var(--bg-soft); border-radius: 13px 13px 0 0;
     }
     .ud-modal-title {
-        font-size: 15px;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin: 0;
+        font-size: 15px; font-weight: 700; color: var(--text-900); margin: 0;
     }
     .ud-modal-title.danger { color: var(--red); }
     .ud-modal-close {
-        background: transparent;
-        border: none;
-        color: var(--text-secondary);
-        font-size: 18px;
-        cursor: pointer;
-        padding: 2px 6px;
-        border-radius: 4px;
-        line-height: 1;
-        transition: color 0.15s;
+        background: transparent; border: none; color: var(--text-muted);
+        font-size: 18px; cursor: pointer; padding: 2px 6px;
+        border-radius: 6px; line-height: 1; transition: all 0.15s;
     }
-    .ud-modal-close:hover { color: var(--text-primary); }
-    .ud-modal-body {
-        padding: 20px;
-    }
+    .ud-modal-close:hover { color: var(--text-900); background: var(--bg-soft); }
+    .ud-modal-body { padding: 20px; }
     .ud-modal-footer {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-        padding: 14px 20px;
-        border-top: 1px solid var(--border);
+        display: flex; justify-content: flex-end; gap: 10px;
+        padding: 14px 20px; border-top: 1px solid var(--border);
+        background: var(--bg-soft); border-radius: 0 0 13px 13px;
     }
     .ud-modal .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-        margin-bottom: 14px;
+        display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px;
     }
     .ud-modal .form-group label {
-        font-size: 11px;
-        color: var(--text-secondary);
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.4px;
+        font-size: 11px; color: var(--text-navy); font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.5px;
     }
-    .ud-modal .ud-input {
-        background: var(--bg-elevated);
-        border: 1px solid var(--border-bright);
-        color: var(--text-primary);
-        border-radius: 6px;
-        padding: 7px 10px;
-        font-size: 13px;
-        font-family: inherit;
-        width: 100%;
-        transition: border-color 0.15s;
+    .ud-page .ud-input {
+        background: var(--bg-soft); border: 1.5px solid var(--border);
+        color: var(--text-900); border-radius: 8px; padding: 8px 10px;
+        font-size: 13px; font-family: inherit; width: 100%; transition: border-color 0.15s;
     }
-    .ud-modal .ud-input:focus {
-        outline: none;
-        border-color: var(--accent-blue);
-        box-shadow: 0 0 0 2px var(--accent-blue-dim);
+    .ud-page .ud-input:focus {
+        outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim);
     }
     .ud-modal .form-check-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-top: 4px;
+        display: flex; align-items: center; gap: 8px; margin-top: 4px;
     }
     .ud-modal .form-check-row input[type="checkbox"] {
-        width: 15px; height: 15px;
-        accent-color: var(--accent-blue);
-        cursor: pointer;
+        width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer;
     }
     .ud-modal .form-check-row label {
-        font-size: 13px;
-        color: var(--text-primary);
-        cursor: pointer;
-        text-transform: none;
-        letter-spacing: 0;
+        font-size: 13px; color: var(--text-900); cursor: pointer;
+        text-transform: none; letter-spacing: 0;
     }
-    .ud-modal .delete-warning {
-        font-size: 13px;
-        color: var(--text-primary);
-        margin-bottom: 8px;
-    }
-    .ud-modal .delete-sub {
-        font-size: 12px;
-        color: var(--text-secondary);
-    }
+    .ud-modal .delete-warning { font-size: 13px; color: var(--text-900); margin-bottom: 8px; }
+    .ud-modal .delete-sub { font-size: 12px; color: var(--text-navy); }
     .ud-modal .validation-errors {
-        background: var(--red-dim);
-        border: 1px solid rgba(218,54,51,0.3);
-        border-radius: 6px;
-        padding: 8px 12px;
-        font-size: 12px;
-        color: #f87171;
-        margin-bottom: 14px;
+        background: var(--red-bg); border: 1px solid var(--red-bdr);
+        border-radius: 8px; padding: 8px 12px; font-size: 12px;
+        color: var(--red); margin-bottom: 14px;
     }
 </style>
 
@@ -447,9 +243,7 @@
             <h3>UI Dashboards</h3>
             <p>Gestion des dashboards (défaut, création, suppression)</p>
         </div>
-        <button class="ud-btn ud-btn-primary" @onclick="New">
-            + Nouveau
-        </button>
+        <button class="ud-btn ud-btn-primary" @onclick="New">+ Nouveau</button>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(Error))
@@ -463,49 +257,38 @@
     }
     else
     {
+        <div style="margin-bottom: 20px;">
+            <input type="text" class="ud-input" placeholder="Rechercher un dashboard..." @bind="_searchQuery" @bind:event="oninput" style="max-width: 300px;" />
+        </div>
         <div class="dash-grid">
-            @foreach (var d in Items.OrderByDescending(x => x.IsDefault).ThenBy(x => x.Name))
+            @{
+                var filtered = Items.Where(x => string.IsNullOrWhiteSpace(_searchQuery) || x.Name.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)).OrderBy(x => x.Name);
+            }
+            @foreach (var d in filtered)
             {
-                <div class="dash-card @(d.IsDefault ? "is-default" : "")">
+                <div class="dash-card" @onclick="@(() => Nav.NavigateTo($"/dashboard/{d.Id}"))">
                     <div class="dash-card-body">
-
                         <div class="dash-card-top">
                             <div>
                                 <div class="dash-card-title">
                                     @d.Name
-                                    @if (d.IsDefault)
-                                    {
-                                        <span class="badge-default">Default</span>
-                                    }
                                 </div>
                                 <div class="dash-card-desc">
                                     @(!string.IsNullOrWhiteSpace(d.Description) ? d.Description : "—")
                                 </div>
                             </div>
-
-                            @* Dropdown Actions *@
-                            <div class="ud-dropdown @(_openDropdown == d.Id ? "open" : "")">
-                                <button class="ud-btn ud-btn-ghost" style="padding:5px 10px;font-size:12px;"
-                                        @onclick="() => ToggleDropdown(d.Id)">
-                                    Actions ▾
+                            <div style="display: flex; gap: 6px;">
+                                <button type="button" class="ud-btn ud-btn-icon" @onclick:stopPropagation="true" @onclick="() => Edit(d)" title="Modifier">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                                 </button>
-                                <div class="ud-dropdown-menu">
-                                    <button class="ud-dropdown-item" @onclick="() => { CloseDropdown(); Open(d.Id); }">Ouvrir</button>
-                                    <button class="ud-dropdown-item" @onclick="() => { CloseDropdown(); Edit(d); }">Modifier</button>
-                                    <button class="ud-dropdown-item" @onclick="() => { CloseDropdown(); SetDefault(d.Id); }">Définir défaut</button>
-                                    <div class="ud-dropdown-divider"></div>
-                                    <button class="ud-dropdown-item danger" @onclick="() => { CloseDropdown(); AskDelete(d); }">Supprimer</button>
-                                </div>
+                                <button type="button" class="ud-btn ud-btn-icon" style="color: var(--red); border-color: var(--red-bdr);" @onclick:stopPropagation="true" @onclick="() => AskDelete(d)" title="Supprimer">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                </button>
                             </div>
                         </div>
-
                         <div class="dash-card-actions">
-                            <button class="ud-btn ud-btn-outline" @onclick="() => Open(d.Id)">
-                                ⚙ Gérer (Zones/Widgets)
-                            </button>
-                            <button class="ud-btn ud-btn-icon" @onclick="() => Edit(d)" title="Modifier">✏</button>
+                            <button type="button" class="ud-btn ud-btn-outline" @onclick:stopPropagation="true" @onclick="() => Open(d.Id)">⚙ Gérer (Zones/Widgets)</button>
                         </div>
-
                     </div>
                     <div class="dash-card-footer">
                         Créé : @d.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
@@ -521,7 +304,7 @@
         <div class="ud-modal-backdrop" @onclick="CloseModal">
             <div class="ud-modal" @onclick:stopPropagation>
                 <div class="ud-modal-header">
-                    <h5 class="ud-modal-title">@(IsEdit ? "✏ Modifier Dashboard" : "+ Créer Dashboard")</h5>
+                    <h5 class="ud-modal-title">@(IsEdit ? "Modifier Dashboard" : "+ Créer Dashboard")</h5>
                     <button class="ud-modal-close" @onclick="CloseModal">✕</button>
                 </div>
                 <EditForm Model="Form" OnValidSubmit="Save">
@@ -535,10 +318,6 @@
                         <div class="form-group">
                             <label>Description</label>
                             <InputText class="ud-input" @bind-Value="Form.Description" placeholder="Description (optionnel)" />
-                        </div>
-                        <div class="form-check-row">
-                            <InputCheckbox @bind-Value="Form.IsDefault" id="chkDefault" />
-                            <label for="chkDefault">Définir comme dashboard par défaut</label>
                         </div>
                     </div>
                     <div class="ud-modal-footer">
@@ -555,13 +334,13 @@
     {
         <div class="ud-modal-backdrop" @onclick="CloseDelete">
             <div class="ud-modal" @onclick:stopPropagation>
-                <div class="ud-modal-header">
+                <div class="ud-modal-header" style="border-top-color:var(--red);">
                     <h5 class="ud-modal-title danger">Supprimer Dashboard</h5>
                     <button class="ud-modal-close" @onclick="CloseDelete">✕</button>
                 </div>
                 <div class="ud-modal-body">
                     <p class="delete-warning">
-                        Confirmer la suppression de : <strong style="color:var(--tag-txt)">@DeleteCandidate.Name</strong> ?
+                        Confirmer la suppression de : <strong style="color:var(--accent)">@DeleteCandidate.Name</strong> ?
                     </p>
                     <p class="delete-sub">Zones, Widgets et Bindings associés seront également supprimés.</p>
                 </div>
@@ -576,6 +355,7 @@
 </div>
 
 @code {
+    private string _searchQuery = "";
     private List<UiDashboardDto>? Items;
     private string? Error;
 
@@ -584,31 +364,23 @@
     private Guid EditId;
 
     private UiDashboardDto? DeleteCandidate;
-    private Guid _openDropdown = Guid.Empty;
 
     protected override async Task OnInitializedAsync() => await Load();
 
     private async Task Load()
     {
-        Error = null;
-        Items = null;
+        Error = null; Items = null;
         try { Items = await Api.GetDashboardsAsync() ?? []; }
         catch (Exception ex) { Error = ex.Message; Items = []; }
     }
 
     private void Open(Guid id) => Nav.NavigateTo($"/admin/ui-dashboards/{id}");
 
-    private void New()
-    {
-        IsEdit = false;
-        EditId = Guid.Empty;
-        Form = new UiDashboardCreateDto();
-    }
+    private void New() { IsEdit = false; EditId = Guid.Empty; Form = new UiDashboardCreateDto(); }
 
     private void Edit(UiDashboardDto d)
     {
-        IsEdit = true;
-        EditId = d.Id;
+        IsEdit = true; EditId = d.Id;
         Form = new UiDashboardCreateDto { Name = d.Name, Description = d.Description, IsDefault = d.IsDefault };
     }
 
@@ -621,9 +393,7 @@
                 await Api.CreateDashboardAsync(Form);
             else
                 await Api.UpdateDashboardAsync(EditId, new UiDashboardUpdateDto { Name = Form.Name, Description = Form.Description, IsDefault = Form.IsDefault });
-
-            CloseModal();
-            await Load();
+            CloseModal(); await Load();
         }
         catch (Exception ex) { Error = ex.Message; }
     }
@@ -635,26 +405,13 @@
     }
 
     private void CloseModal() => Form = null;
-
     private void AskDelete(UiDashboardDto d) => DeleteCandidate = d;
     private void CloseDelete() => DeleteCandidate = null;
 
     private async Task ConfirmDelete()
     {
         if (DeleteCandidate is null) return;
-        try
-        {
-            await Api.DeleteDashboardAsync(DeleteCandidate.Id);
-            DeleteCandidate = null;
-            await Load();
-        }
+        try { await Api.DeleteDashboardAsync(DeleteCandidate.Id); DeleteCandidate = null; await Load(); }
         catch (Exception ex) { Error = ex.Message; }
     }
-
-    private void ToggleDropdown(Guid id)
-    {
-        _openDropdown = _openDropdown == id ? Guid.Empty : id;
-    }
-
-    private void CloseDropdown() => _openDropdown = Guid.Empty;
 }

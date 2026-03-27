@@ -7,227 +7,160 @@
 
 <style>
     .mc-page {
-        --bg-card:         #161b22;
-        --bg-elevated:     #1c2128;
-        --border:          #21262d;
-        --border-bright:   #30363d;
-        --accent-blue:     #238be6;
-        --accent-blue-dim: rgba(35, 139, 230, 0.15);
-        --green-badge-bg:  #1f8a5e;
-        --tag-bg:          #122535;
-        --tag-txt:         #58c4dc;
-        --tag-border:      #1d4a65;
-        --scope-pink:      #e879a0;
-        --red:             #da3633;
-        --red-dim:         rgba(218, 54, 51, 0.15);
-        --orange:          #d97706;
-        --orange-dim:      rgba(217,119,6,0.12);
-        --text-primary:    #e6edf3;
-        --text-secondary:  #7d8590;
-        --text-muted:      #3d444d;
-        font-family: 'DM Sans', sans-serif;
-        color: var(--text-primary);
+        --white:       #ffffff;
+        --bg-soft:     #f8fafc;
+        --border:      #e8edf5;
+        --border-soft: #f1f5f9;
+        --accent:      #1e40af;
+        --accent-dim:  rgba(30,64,175,0.07);
+        --green-bg:    #d1fae5;
+        --green-txt:   #065f46;
+        --green-bdr:   #a7f3d0;
+        --tag-bg:      #dbeafe;
+        --tag-txt:     #1e40af;
+        --tag-bdr:     #bfdbfe;
+        --pink:        #be185d;
+        --pink-bg:     #fce7f3;
+        --orange:      #d97706;
+        --orange-bg:   #fffbeb;
+        --orange-bdr:  #fde68a;
+        --orange-txt:  #92400e;
+        --red:         #dc2626;
+        --red-bg:      rgba(220,38,38,0.07);
+        --red-bdr:     #fecaca;
+        --text-900:    #0f172a;
+        --text-navy:   #1e4d7b;
+        --text-muted:  #64748b;
+        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color: var(--text-900);
     }
 
     /* ── Header ── */
     .mc-page .page-header {
-        display: flex;
-        align-items: flex-end;
-        justify-content: space-between;
-        margin-bottom: 28px;
-        padding-bottom: 20px;
-        border-bottom: 1px solid var(--border);
-        position: relative;
-    }
-    .mc-page .page-header::after {
-        content: '';
-        position: absolute;
-        bottom: -1px; left: 0;
-        width: 120px; height: 1px;
-        background: linear-gradient(90deg, var(--accent-blue), transparent);
+        display: flex; align-items: flex-end; justify-content: space-between;
+        margin-bottom: 28px; padding-bottom: 18px; border-bottom: 1px solid var(--border);
     }
     .mc-page .page-header h3 {
-        font-size: 22px;
-        font-weight: 600;
-        letter-spacing: -0.3px;
-        margin: 0 0 4px 0;
+        font-size: 24px; font-weight: 800; letter-spacing: -0.5px;
+        color: var(--text-900); margin: 0 0 5px 0;
     }
-    .mc-page .page-header p {
-        font-size: 12px;
-        color: var(--text-secondary);
-        margin: 0;
-    }
+    .mc-page .page-header p { font-size: 13px; color: var(--text-navy); margin: 0; }
 
     /* ── Toolbar ── */
     .mc-page .toolbar {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-bottom: 20px;
+        display: flex; align-items: center; gap: 10px;
+        flex-wrap: wrap; margin-bottom: 20px;
     }
-    .mc-page .toolbar-sep {
-        width: 1px;
-        height: 24px;
-        background: var(--border-bright);
-    }
+    .mc-page .toolbar-sep { width: 1px; height: 22px; background: var(--border); }
     .mc-page .filter-toggle {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        font-size: 13px;
-        color: var(--text-secondary);
-        cursor: pointer;
-        user-select: none;
-        padding: 5px 10px;
-        border-radius: 6px;
-        border: 1px solid var(--border-bright);
-        background: transparent;
-        transition: all 0.15s;
-        font-family: inherit;
+        display: flex; align-items: center; gap: 7px; font-size: 13px;
+        color: var(--text-muted); cursor: pointer; user-select: none;
+        padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border);
+        background: var(--white); transition: all 0.15s; font-family: inherit;
     }
-    .mc-page .filter-toggle:hover { color: var(--text-primary); border-color: var(--accent-blue); background: var(--accent-blue-dim); }
+    .mc-page .filter-toggle:hover {
+        color: var(--text-900); border-color: var(--accent); background: var(--accent-dim);
+    }
     .mc-page .filter-toggle input[type="checkbox"] {
-        accent-color: var(--accent-blue);
-        width: 14px; height: 14px;
-        cursor: pointer;
+        accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer;
     }
 
     /* ── Buttons ── */
     .mc-page .mc-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 7px 14px;
-        border-radius: 6px;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.18s ease;
-        border: 1px solid transparent;
-        font-family: inherit;
-        line-height: 1.4;
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+        cursor: pointer; transition: all 0.15s; border: 1px solid transparent;
+        font-family: inherit; line-height: 1.4;
     }
-    .mc-page .mc-btn-primary { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
-    .mc-page .mc-btn-primary:hover { background: #3a9ef5; box-shadow: 0 0 14px rgba(35,139,230,0.35); transform: translateY(-1px); }
-    .mc-page .mc-btn-ghost { background: transparent; color: var(--text-secondary); border-color: var(--border-bright); }
-    .mc-page .mc-btn-ghost:hover { color: var(--text-primary); border-color: var(--accent-blue); background: var(--accent-blue-dim); }
-    .mc-page .mc-btn-sm { font-size: 11px; padding: 3px 10px; }
-    .mc-page .mc-btn-outline { background: transparent; color: var(--accent-blue); border-color: var(--accent-blue); }
-    .mc-page .mc-btn-outline:hover { background: var(--accent-blue-dim); }
-    .mc-page .mc-btn-tag { background: transparent; color: var(--tag-txt); border-color: var(--tag-border); }
-    .mc-page .mc-btn-tag:hover { background: var(--tag-bg); }
-    .mc-page .mc-btn-warn { background: transparent; color: var(--orange); border-color: var(--orange); }
-    .mc-page .mc-btn-warn:hover { background: var(--orange-dim); }
+    .mc-page .mc-btn-primary {
+        background: var(--accent); color: #fff; border-color: var(--accent);
+    }
+    .mc-page .mc-btn-primary:hover {
+        background: #1e3a8a; box-shadow: 0 4px 14px rgba(30,64,175,0.25); transform: translateY(-1px);
+    }
+    .mc-page .mc-btn-ghost {
+        background: var(--white); color: var(--text-muted); border-color: var(--border);
+    }
+    .mc-page .mc-btn-ghost:hover {
+        color: var(--text-900); border-color: #c8d2e0; background: var(--bg-soft);
+    }
+    .mc-page .mc-btn-sm { font-size: 11px; padding: 4px 10px; border-radius: 6px; }
+    .mc-page .mc-btn-outline {
+        background: var(--accent-dim); color: var(--accent); border-color: var(--tag-bdr);
+    }
+    .mc-page .mc-btn-outline:hover { background: var(--tag-bg); }
+    .mc-page .mc-btn-tag {
+        background: var(--bg-soft); color: var(--text-navy); border-color: var(--border);
+    }
+    .mc-page .mc-btn-tag:hover { background: var(--tag-bg); color: var(--accent); border-color: var(--tag-bdr); }
+    .mc-page .mc-btn-warn {
+        background: var(--orange-bg); color: var(--orange-txt); border-color: var(--orange-bdr);
+    }
+    .mc-page .mc-btn-warn:hover { background: #fef3c7; }
 
     /* ── Alert ── */
     .mc-page .mc-alert-danger {
-        background: rgba(218,54,51,0.1);
-        border: 1px solid rgba(218,54,51,0.3);
-        color: #f87171;
-        border-radius: 8px;
-        padding: 10px 14px;
-        font-size: 13px;
-        margin-bottom: 16px;
+        background: var(--red-bg); border: 1px solid var(--red-bdr);
+        color: var(--red); border-radius: 10px; padding: 12px 16px;
+        font-size: 13px; margin-bottom: 16px;
     }
-    .mc-page .loading-text { color: var(--text-secondary); font-size: 13px; }
+    .mc-page .loading-text { color: var(--text-navy); font-size: 13px; }
 
     /* ── Table Card ── */
     .mc-page .table-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        overflow: hidden;
-        margin-bottom: 24px;
+        background: var(--white); border: 1px solid var(--border);
+        border-radius: 14px; overflow: hidden; margin-bottom: 24px;
+        box-shadow: 0 1px 4px rgba(15,23,42,0.05);
     }
     .mc-page .table-scroll { overflow-x: auto; }
-    .mc-page .mc-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 13px;
-    }
+    .mc-page .mc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .mc-page .mc-table th {
-        text-align: left;
-        padding: 10px 16px;
-        color: var(--text-secondary);
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.4px;
-        border-bottom: 1px solid var(--border);
-        background: var(--bg-elevated);
-        white-space: nowrap;
+        text-align: left; padding: 10px 16px; color: var(--text-navy);
+        font-size: 11px; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.5px; border: 1px solid #1e3a5f;
+        background: var(--bg-soft); white-space: nowrap;
     }
     .mc-page .mc-table td {
-        padding: 11px 16px;
-        color: var(--text-primary);
-        border-bottom: 1px solid var(--border);
-        vertical-align: middle;
+        padding: 12px 16px; color: var(--text-900);
+        border: 1px solid #1e3a5f; vertical-align: middle;
+        white-space: normal; word-break: break-word;
     }
-    .mc-page .mc-table tbody tr:last-child td { border-bottom: none; }
-    .mc-page .mc-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+    .mc-page .mc-table tbody tr:hover td { background: #eff6ff; }
+
     .mc-page .cell-code {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 12px;
-        font-weight: 700;
-        color: var(--tag-txt);
+        font-family: 'JetBrains Mono', monospace; font-size: 12px;
+        font-weight: 700; color: var(--accent);
     }
-    .mc-page .cell-name { font-weight: 500; }
+    .mc-page .cell-name { font-weight: 600; color: var(--text-900); }
     .mc-page .cell-line {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 11px;
-        color: var(--scope-pink);
+        font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--pink);
     }
     .mc-page .cell-endpoint {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 11px;
-        color: var(--text-secondary);
+        font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-navy);
     }
     .mc-page .badge-active {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 2px 9px;
-        border-radius: 4px;
-        background: var(--green-badge-bg);
-        color: #fff;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
+        display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px;
+        border-radius: 6px; background: var(--green-bg); border: 1px solid var(--green-bdr);
+        color: var(--green-txt); font-size: 10px; font-weight: 700; text-transform: uppercase;
     }
     .mc-page .badge-active::before {
-        content: '';
-        width: 5px; height: 5px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.5);
-        animation: mcPulse 2s ease infinite;
+        content: ''; width: 5px; height: 5px; border-radius: 50%;
+        background: var(--green-txt); animation: mcPulse 2s ease infinite;
     }
     .mc-page .badge-inactive {
-        display: inline-flex;
-        padding: 2px 9px;
-        border-radius: 4px;
-        background: rgba(125,133,144,0.1);
-        border: 1px solid var(--border-bright);
-        color: var(--text-secondary);
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
+        display: inline-flex; padding: 3px 9px; border-radius: 6px;
+        background: var(--bg-soft); border: 1px solid var(--border);
+        color: var(--text-muted); font-size: 10px; font-weight: 700; text-transform: uppercase;
     }
-    @@keyframes mcPulse {
-        0%, 100% { opacity: 1; }
-        50%       { opacity: 0.4; }
-    }
+    @@keyframes mcPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     .mc-page .cell-actions { display: flex; gap: 6px; white-space: nowrap; }
 
-    /* ── Inline Form Panel ── */
+    /* ── Form Panel ── */
     .mc-page .form-panel {
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        overflow: hidden;
-        margin-bottom: 24px;
+        background: var(--white); border: 1px solid var(--border);
+        border-radius: 14px; overflow: hidden; margin-bottom: 24px;
+        box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+        border-top: 3px solid var(--accent);
         animation: mcFadeUp 0.25s ease;
     }
     @@keyframes mcFadeUp {
@@ -235,29 +168,18 @@
         to   { opacity: 1; transform: translateY(0); }
     }
     .mc-page .form-panel-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 13px 20px;
-        border-bottom: 1px solid var(--border);
-        background: var(--bg-elevated);
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 20px; border-bottom: 1px solid var(--border);
+        background: var(--bg-soft);
     }
     .mc-page .form-panel-title {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--text-primary);
-        display: flex;
-        align-items: center;
-        gap: 8px;
+        font-size: 14px; font-weight: 700; color: var(--text-900);
+        display: flex; align-items: center; gap: 8px;
     }
     .mc-page .form-panel-title .edit-code {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 12px;
-        color: var(--tag-txt);
-        background: var(--tag-bg);
-        border: 1px solid var(--tag-border);
-        padding: 1px 7px;
-        border-radius: 4px;
+        font-family: 'JetBrains Mono', monospace; font-size: 12px;
+        color: var(--accent); background: var(--tag-bg);
+        border: 1px solid var(--tag-bdr); padding: 1px 7px; border-radius: 5px;
     }
     .mc-page .form-panel-body {
         padding: 20px;
@@ -265,68 +187,34 @@
         grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
         gap: 16px;
     }
-    .mc-page .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-    }
+    .mc-page .form-group { display: flex; flex-direction: column; gap: 5px; }
     .mc-page .form-group label {
-        font-size: 11px;
-        color: var(--text-secondary);
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.4px;
+        font-size: 11px; color: var(--text-navy); font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.5px;
     }
-    .mc-page .mc-input,
-    .mc-page .mc-select {
-        background: var(--bg-elevated);
-        border: 1px solid var(--border-bright);
-        color: var(--text-primary);
-        border-radius: 6px;
-        padding: 7px 10px;
-        font-size: 13px;
-        font-family: inherit;
-        width: 100%;
-        transition: border-color 0.15s;
+    .mc-page .mc-input, .mc-page .mc-select {
+        background: var(--bg-soft); border: 1.5px solid var(--border);
+        color: var(--text-900); border-radius: 8px; padding: 8px 10px;
+        font-size: 13px; font-family: inherit; width: 100%; transition: border-color 0.15s;
     }
-    .mc-page .mc-input:focus,
-    .mc-page .mc-select:focus {
-        outline: none;
-        border-color: var(--accent-blue);
-        box-shadow: 0 0 0 2px var(--accent-blue-dim);
+    .mc-page .mc-input:focus, .mc-page .mc-select:focus {
+        outline: none; border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-dim);
     }
-    .mc-page .mc-select option { background: #1c2128; }
-    .mc-page .form-check-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding-top: 22px;
-    }
+    .mc-page .form-check-row { display: flex; align-items: center; gap: 8px; padding-top: 22px; }
     .mc-page .form-check-row input[type="checkbox"] {
-        accent-color: var(--accent-blue);
-        width: 15px; height: 15px;
-        cursor: pointer;
+        accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer;
     }
-    .mc-page .form-check-row label {
-        font-size: 13px;
-        color: var(--text-primary);
-        cursor: pointer;
-    }
+    .mc-page .form-check-row label { font-size: 13px; color: var(--text-900); cursor: pointer; }
     .mc-page .form-panel-footer {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 14px 20px;
-        border-top: 1px solid var(--border);
+        display: flex; align-items: center; gap: 10px;
+        padding: 14px 20px; border-top: 1px solid var(--border);
+        background: var(--bg-soft);
     }
     .mc-page .validation-errors {
-        background: var(--red-dim);
-        border: 1px solid rgba(218,54,51,0.3);
-        border-radius: 6px;
-        padding: 8px 12px;
-        font-size: 12px;
-        color: #f87171;
-        grid-column: 1 / -1;
+        background: var(--red-bg); border: 1px solid var(--red-bdr);
+        border-radius: 8px; padding: 8px 12px; font-size: 12px;
+        color: var(--red); grid-column: 1 / -1;
     }
 </style>
 
@@ -349,7 +237,7 @@
             Afficher seulement actifs
         </label>
         <div class="toolbar-sep"></div>
-        <button class="mc-btn mc-btn-ghost" @onclick="Load">↻ Rafraîchir</button>
+        <button class="mc-btn mc-btn-ghost" @onclick="Load">Rafraîchir</button>
     </div>
 
     @if (Error is not null)
@@ -386,19 +274,13 @@
                                 <td><span class="cell-line">@m.LineCode</span></td>
                                 <td><span class="cell-endpoint">@m.OpcEndpointId</span></td>
                                 <td>
-                                    @if (m.IsActive)
-                                    {
-                                        <span class="badge-active">Actif</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge-inactive">Inactif</span>
-                                    }
+                                    @if (m.IsActive) { <span class="badge-active">Actif</span> }
+                                    else             { <span class="badge-inactive">Inactif</span> }
                                 </td>
                                 <td>
                                     <div class="cell-actions">
-                                        <button class="mc-btn mc-btn-outline mc-btn-sm" @onclick="() => Edit(m)">✏ Edit</button>
-                                        <button class="mc-btn mc-btn-tag mc-btn-sm" @onclick="() => GoMappings(m)">⚙ TagMappings</button>
+                                        <button class="mc-btn mc-btn-outline mc-btn-sm" @onclick="() => Edit(m)">Edit</button>
+                                        <button class="mc-btn mc-btn-tag mc-btn-sm" @onclick="() => GoMappings(m)">TagMappings</button>
                                         <button class="mc-btn mc-btn-warn mc-btn-sm" @onclick="() => Deactivate(m)">Désactiver</button>
                                     </div>
                                 </td>
@@ -416,7 +298,7 @@
         <div class="form-panel">
             <div class="form-panel-header">
                 <div class="form-panel-title">+ Créer Machine</div>
-                <button class="mc-btn mc-btn-ghost mc-btn-sm" @onclick="Cancel">✕ Fermer</button>
+                <button class="mc-btn mc-btn-ghost mc-btn-sm" @onclick="Cancel">Fermer</button>
             </div>
             <EditForm Model="FormCreate" OnValidSubmit="SaveCreate">
                 <DataAnnotationsValidator />
@@ -462,10 +344,10 @@
         <div class="form-panel">
             <div class="form-panel-header">
                 <div class="form-panel-title">
-                    ✏ Modifier Machine
+                    Modifier Machine
                     <span class="edit-code">@EditCode</span>
                 </div>
-                <button class="mc-btn mc-btn-ghost mc-btn-sm" @onclick="Cancel">✕ Fermer</button>
+                <button class="mc-btn mc-btn-ghost mc-btn-sm" @onclick="Cancel">Fermer</button>
             </div>
             <EditForm Model="FormUpdate" OnValidSubmit="SaveUpdate">
                 <DataAnnotationsValidator />
@@ -552,10 +434,8 @@
         EditCode = m.MachineCode;
         FormUpdate = new MachineUpdateDto
         {
-            Name = m.Name,
-            LineCode = m.LineCode,
-            OpcEndpointId = m.OpcEndpointId,
-            IsActive = m.IsActive
+            Name = m.Name, LineCode = m.LineCode,
+            OpcEndpointId = m.OpcEndpointId, IsActive = m.IsActive
         };
     }
 

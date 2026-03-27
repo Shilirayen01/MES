@@ -76,6 +76,15 @@ namespace Mes.Opc.Platform.Realtime
                     // Cancellation requested: exit gracefully
                     break;
                 }
+                catch (System.IO.FileLoadException flex) when (flex.HResult == unchecked((int)0x800711C7))
+                {
+                    // Application Control Policy (AppLocker/WDAC) is blocking a dependency DLL.
+                    // This is an environment-level restriction — the SignalR widget dispatch is
+                    // disabled but the rest of the platform continues to operate.
+                    _logger.LogWarning("Widget dispatch disabled: assembly blocked by Application Control Policy ({HResult:X8}). Contact your IT administrator to whitelist the MES bin directory.", (uint)flex.HResult);
+                    // Stop retrying — this won't succeed until the policy is changed.
+                    await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken).ConfigureAwait(false);
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error sending tag update over SignalR");

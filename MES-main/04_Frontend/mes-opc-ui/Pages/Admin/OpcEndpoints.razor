@@ -5,150 +5,166 @@
 
 <style>
     .oe-page {
-        --bg-card:         #161b22;
-        --bg-elevated:     #1c2128;
-        --border:          #21262d;
-        --border-bright:   #30363d;
-        --accent-blue:     #238be6;
-        --accent-blue-dim: rgba(35, 139, 230, 0.15);
-        --green-badge-bg:  #1f8a5e;
-        --tag-bg:          #122535;
-        --tag-txt:         #58c4dc;
-        --tag-border:      #1d4a65;
-        --red:             #da3633;
-        --red-dim:         rgba(218, 54, 51, 0.15);
-        --orange:          #d97706;
-        --orange-dim:      rgba(217,119,6,0.12);
-        --text-primary:    #e6edf3;
-        --text-secondary:  #7d8590;
-        --text-muted:      #3d444d;
-        font-family: 'DM Sans', sans-serif;
-        color: var(--text-primary);
+        --white:       #ffffff;
+        --bg-soft:     #f8fafc;
+        --border:      #e8edf5;
+        --border-soft: #f1f5f9;
+        --accent:      #1e40af;
+        --accent-dim:  rgba(30,64,175,0.07);
+        --green-bg:    #d1fae5;
+        --green-txt:   #065f46;
+        --green-bdr:   #a7f3d0;
+        --tag-bg:      #dbeafe;
+        --tag-txt:     #1e40af;
+        --tag-bdr:     #bfdbfe;
+        --orange:      #d97706;
+        --orange-bg:   #fffbeb;
+        --orange-bdr:  #fde68a;
+        --orange-txt:  #92400e;
+        --red:         #dc2626;
+        --red-bg:      rgba(220,38,38,0.07);
+        --red-bdr:     #fecaca;
+        --text-900:    #0f172a;
+        --text-navy:   #1e4d7b;
+        --text-muted:  #64748b;
+        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color: var(--text-900);
     }
 
     /* ── Header ── */
     .oe-page .page-header {
-        display: flex;
-        align-items: flex-end;
-        justify-content: space-between;
-        margin-bottom: 28px;
-        padding-bottom: 20px;
-        border-bottom: 1px solid var(--border);
-        position: relative;
+        display: flex; align-items: flex-end; justify-content: space-between;
+        margin-bottom: 28px; padding-bottom: 18px; border-bottom: 1px solid var(--border);
     }
-    .oe-page .page-header::after {
-        content: '';
-        position: absolute;
-        bottom: -1px; left: 0;
-        width: 120px; height: 1px;
-        background: linear-gradient(90deg, var(--accent-blue), transparent);
+    .oe-page .page-header h3 {
+        font-size: 24px; font-weight: 800; letter-spacing: -0.5px;
+        color: var(--text-900); margin: 0 0 5px 0;
     }
-    .oe-page .page-header h3 { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; margin: 0 0 4px 0; }
-    .oe-page .page-header p  { font-size: 12px; color: var(--text-secondary); margin: 0; }
+    .oe-page .page-header p { font-size: 13px; color: var(--text-navy); margin: 0; }
 
     /* ── Toolbar ── */
-    .oe-page .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
-    .oe-page .toolbar-sep { width: 1px; height: 24px; background: var(--border-bright); }
-    .oe-page .filter-toggle {
-        display: flex; align-items: center; gap: 7px;
-        font-size: 13px; color: var(--text-secondary); cursor: pointer; user-select: none;
-        padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border-bright);
-        background: transparent; transition: all 0.15s; font-family: inherit;
+    .oe-page .toolbar {
+        display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;
     }
-    .oe-page .filter-toggle:hover { color: var(--text-primary); border-color: var(--accent-blue); background: var(--accent-blue-dim); }
-    .oe-page .filter-toggle input[type="checkbox"] { accent-color: var(--accent-blue); width: 14px; height: 14px; cursor: pointer; }
+    .oe-page .toolbar-sep { width: 1px; height: 22px; background: var(--border); }
+    .oe-page .filter-toggle {
+        display: flex; align-items: center; gap: 7px; font-size: 13px;
+        color: var(--text-muted); cursor: pointer; user-select: none;
+        padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border);
+        background: var(--white); transition: all 0.15s; font-family: inherit;
+    }
+    .oe-page .filter-toggle:hover {
+        color: var(--text-900); border-color: var(--accent); background: var(--accent-dim);
+    }
+    .oe-page .filter-toggle input[type="checkbox"] {
+        accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer;
+    }
 
     /* ── Buttons ── */
     .oe-page .oe-btn {
         display: inline-flex; align-items: center; gap: 6px;
-        padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 500;
-        cursor: pointer; transition: all 0.18s ease; border: 1px solid transparent;
+        padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+        cursor: pointer; transition: all 0.15s; border: 1px solid transparent;
         font-family: inherit; line-height: 1.4;
     }
-    .oe-page .oe-btn-primary { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
-    .oe-page .oe-btn-primary:hover { background: #3a9ef5; box-shadow: 0 0 14px rgba(35,139,230,0.35); transform: translateY(-1px); }
-    .oe-page .oe-btn-ghost { background: transparent; color: var(--text-secondary); border-color: var(--border-bright); }
-    .oe-page .oe-btn-ghost:hover { color: var(--text-primary); border-color: var(--accent-blue); background: var(--accent-blue-dim); }
-    .oe-page .oe-btn-sm { font-size: 11px; padding: 3px 10px; }
-    .oe-page .oe-btn-outline { background: transparent; color: var(--accent-blue); border-color: var(--accent-blue); }
-    .oe-page .oe-btn-outline:hover { background: var(--accent-blue-dim); }
-    .oe-page .oe-btn-warn { background: transparent; color: var(--orange); border-color: var(--orange); }
-    .oe-page .oe-btn-warn:hover { background: var(--orange-dim); }
+    .oe-page .oe-btn-primary {
+        background: var(--accent); color: #fff; border-color: var(--accent);
+    }
+    .oe-page .oe-btn-primary:hover {
+        background: #1e3a8a; box-shadow: 0 4px 14px rgba(30,64,175,0.25); transform: translateY(-1px);
+    }
+    .oe-page .oe-btn-ghost {
+        background: var(--white); color: var(--text-muted); border-color: var(--border);
+    }
+    .oe-page .oe-btn-ghost:hover {
+        color: var(--text-900); border-color: #c8d2e0; background: var(--bg-soft);
+    }
+    .oe-page .oe-btn-sm { font-size: 11px; padding: 4px 10px; border-radius: 6px; }
+    .oe-page .oe-btn-outline {
+        background: var(--accent-dim); color: var(--accent); border-color: var(--tag-bdr);
+    }
+    .oe-page .oe-btn-outline:hover { background: var(--tag-bg); }
+    .oe-page .oe-btn-warn {
+        background: var(--orange-bg); color: var(--orange-txt); border-color: var(--orange-bdr);
+    }
+    .oe-page .oe-btn-warn:hover { background: #fef3c7; }
 
     /* ── Alert ── */
     .oe-page .oe-alert-danger {
-        background: rgba(218,54,51,0.1); border: 1px solid rgba(218,54,51,0.3);
-        color: #f87171; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px;
+        background: var(--red-bg); border: 1px solid var(--red-bdr);
+        color: var(--red); border-radius: 10px; padding: 12px 16px;
+        font-size: 13px; margin-bottom: 16px;
     }
-    .oe-page .loading-text { color: var(--text-secondary); font-size: 13px; }
+    .oe-page .loading-text { color: var(--text-navy); font-size: 13px; }
 
     /* ── Table Card ── */
     .oe-page .table-card {
-        background: var(--bg-card); border: 1px solid var(--border);
-        border-radius: 10px; overflow: hidden; margin-bottom: 24px;
+        background: var(--white); border: 1px solid var(--border);
+        border-radius: 14px; overflow: hidden; margin-bottom: 24px;
+        box-shadow: 0 1px 4px rgba(15,23,42,0.05);
     }
     .oe-page .table-scroll { overflow-x: auto; }
     .oe-page .oe-table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .oe-page .oe-table th {
         text-align: left; padding: 10px 16px;
-        color: var(--text-secondary); font-size: 11px; font-weight: 600;
-        text-transform: uppercase; letter-spacing: 0.4px;
-        border-bottom: 1px solid var(--border); background: var(--bg-elevated); white-space: nowrap;
+        color: var(--text-navy); font-size: 10px; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.5px;
+        border: 1px solid #1e3a5f; background: var(--bg-soft); white-space: nowrap;
     }
     .oe-page .oe-table td {
-        padding: 11px 16px; color: var(--text-primary);
-        border-bottom: 1px solid var(--border); vertical-align: middle;
+        padding: 12px 16px; color: var(--text-900);
+        border: 1px solid #1e3a5f; vertical-align: middle;
+        white-space: normal; word-break: break-word;
     }
-    .oe-page .oe-table tbody tr:last-child td { border-bottom: none; }
-    .oe-page .oe-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+    .oe-page .oe-table tbody tr:hover td { background: #eff6ff; }
+
     .oe-page .cell-id {
         font-family: 'JetBrains Mono', monospace; font-size: 11px;
         color: var(--text-muted); font-weight: 600;
     }
-    .oe-page .cell-name { font-weight: 600; color: var(--text-primary); }
+    .oe-page .cell-name { font-weight: 700; color: var(--text-900); }
     .oe-page .cell-url {
         font-family: 'JetBrains Mono', monospace; font-size: 11px;
-        color: var(--tag-txt); word-break: break-all; max-width: 380px;
+        color: var(--accent); word-break: break-all; max-width: 380px;
     }
     .oe-page .badge-active {
-        display: inline-flex; align-items: center; gap: 4px;
-        padding: 2px 9px; border-radius: 4px;
-        background: var(--green-badge-bg); color: #fff;
-        font-family: 'JetBrains Mono', monospace; font-size: 10px;
-        font-weight: 700; text-transform: uppercase;
+        display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px;
+        border-radius: 6px; background: var(--green-bg); border: 1px solid var(--green-bdr);
+        color: var(--green-txt); font-size: 10px; font-weight: 700; text-transform: uppercase;
     }
     .oe-page .badge-active::before {
         content: ''; width: 5px; height: 5px; border-radius: 50%;
-        background: rgba(255,255,255,0.5); animation: oePulse 2s ease infinite;
+        background: var(--green-txt); animation: oePulse 2s ease infinite;
     }
     .oe-page .badge-inactive {
-        display: inline-flex; padding: 2px 9px; border-radius: 4px;
-        background: rgba(125,133,144,0.1); border: 1px solid var(--border-bright);
-        color: var(--text-secondary); font-family: 'JetBrains Mono', monospace;
-        font-size: 10px; font-weight: 700; text-transform: uppercase;
+        display: inline-flex; padding: 3px 9px; border-radius: 6px;
+        background: var(--bg-soft); border: 1px solid var(--border);
+        color: var(--text-muted); font-size: 10px; font-weight: 700; text-transform: uppercase;
     }
     @@keyframes oePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     .oe-page .cell-actions { display: flex; gap: 6px; white-space: nowrap; }
 
-    /* ── Inline Form Panel ── */
+    /* ── Form Panel ── */
     .oe-page .form-panel {
-        background: var(--bg-card); border: 1px solid var(--border);
-        border-radius: 10px; overflow: hidden; margin-bottom: 24px;
+        background: var(--white); border: 1px solid var(--border);
+        border-radius: 14px; overflow: hidden; margin-bottom: 24px;
+        box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+        border-top: 3px solid var(--accent);
         animation: oeFadeUp 0.25s ease;
     }
     @@keyframes oeFadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
     .oe-page .form-panel-header {
         display: flex; align-items: center; justify-content: space-between;
-        padding: 13px 20px; border-bottom: 1px solid var(--border); background: var(--bg-elevated);
+        padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--bg-soft);
     }
     .oe-page .form-panel-title {
-        font-size: 14px; font-weight: 600; color: var(--text-primary);
+        font-size: 14px; font-weight: 700; color: var(--text-900);
         display: flex; align-items: center; gap: 8px;
     }
     .oe-page .form-panel-title .edit-id {
-        font-family: 'JetBrains Mono', monospace; font-size: 12px;
-        color: var(--tag-txt); background: var(--tag-bg);
-        border: 1px solid var(--tag-border); padding: 1px 7px; border-radius: 4px;
+        font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent);
+        background: var(--tag-bg); border: 1px solid var(--tag-bdr); padding: 1px 7px; border-radius: 5px;
     }
     .oe-page .form-panel-body {
         padding: 20px;
@@ -158,32 +174,32 @@
     }
     .oe-page .form-group { display: flex; flex-direction: column; gap: 5px; }
     .oe-page .form-group label {
-        font-size: 11px; color: var(--text-secondary);
-        font-weight: 500; text-transform: uppercase; letter-spacing: 0.4px;
+        font-size: 11px; color: var(--text-navy); font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.5px;
     }
     .oe-page .form-group.full-width { grid-column: 1 / -1; }
     .oe-page .oe-input, .oe-page .oe-select {
-        background: var(--bg-elevated); border: 1px solid var(--border-bright);
-        color: var(--text-primary); border-radius: 6px; padding: 7px 10px;
+        background: var(--bg-soft); border: 1.5px solid var(--border);
+        color: var(--text-900); border-radius: 8px; padding: 8px 10px;
         font-size: 13px; font-family: inherit; width: 100%; transition: border-color 0.15s;
     }
     .oe-page .oe-input.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
     .oe-page .oe-input:focus, .oe-page .oe-select:focus {
-        outline: none; border-color: var(--accent-blue); box-shadow: 0 0 0 2px var(--accent-blue-dim);
+        outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim);
     }
-    .oe-page .form-check-row {
-        display: flex; align-items: center; gap: 8px; padding-top: 22px;
+    .oe-page .form-check-row { display: flex; align-items: center; gap: 8px; padding-top: 22px; }
+    .oe-page .form-check-row input[type="checkbox"] {
+        accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer;
     }
-    .oe-page .form-check-row input[type="checkbox"] { accent-color: var(--accent-blue); width: 15px; height: 15px; cursor: pointer; }
-    .oe-page .form-check-row label { font-size: 13px; color: var(--text-primary); cursor: pointer; }
+    .oe-page .form-check-row label { font-size: 13px; color: var(--text-900); cursor: pointer; }
     .oe-page .form-panel-footer {
         display: flex; align-items: center; gap: 10px;
-        padding: 14px 20px; border-top: 1px solid var(--border);
+        padding: 14px 20px; border-top: 1px solid var(--border); background: var(--bg-soft);
     }
     .oe-page .validation-errors {
-        background: var(--red-dim); border: 1px solid rgba(218,54,51,0.3);
-        border-radius: 6px; padding: 8px 12px; font-size: 12px; color: #f87171;
-        grid-column: 1 / -1;
+        background: var(--red-bg); border: 1px solid var(--red-bdr);
+        border-radius: 8px; padding: 8px 12px; font-size: 12px;
+        color: var(--red); grid-column: 1 / -1;
     }
 </style>
 
@@ -206,7 +222,7 @@
             Afficher seulement actifs
         </label>
         <div class="toolbar-sep"></div>
-        <button class="oe-btn oe-btn-ghost" @onclick="Load">↻ Rafraîchir</button>
+        <button class="oe-btn oe-btn-ghost" @onclick="Load">Rafraîchir</button>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(Error))
@@ -241,18 +257,12 @@
                                 <td><span class="cell-name">@e.Name</span></td>
                                 <td><span class="cell-url">@e.EndpointUrl</span></td>
                                 <td>
-                                    @if (e.IsActive)
-                                    {
-                                        <span class="badge-active">Actif</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge-inactive">Inactif</span>
-                                    }
+                                    @if (e.IsActive) { <span class="badge-active">Actif</span> }
+                                    else             { <span class="badge-inactive">Inactif</span> }
                                 </td>
                                 <td>
                                     <div class="cell-actions">
-                                        <button class="oe-btn oe-btn-outline oe-btn-sm" @onclick="() => Edit(e)">✏ Edit</button>
+                                        <button class="oe-btn oe-btn-outline oe-btn-sm" @onclick="() => Edit(e)">Edit</button>
                                         <button class="oe-btn oe-btn-warn oe-btn-sm" @onclick="() => Deactivate(e)">Désactiver</button>
                                     </div>
                                 </td>
@@ -272,7 +282,7 @@
                 <div class="form-panel-title">
                     @if (IsEdit)
                     {
-                        <span>✏ Modifier Endpoint</span>
+                        <span>Modifier Endpoint</span>
                         <span class="edit-id">#@EditId</span>
                     }
                     else
@@ -280,7 +290,7 @@
                         <span>+ Créer Endpoint</span>
                     }
                 </div>
-                <button class="oe-btn oe-btn-ghost oe-btn-sm" @onclick="Cancel">✕ Fermer</button>
+                <button class="oe-btn oe-btn-ghost oe-btn-sm" @onclick="Cancel">Fermer</button>
             </div>
             <EditForm Model="Form" OnValidSubmit="Save">
                 <DataAnnotationsValidator />

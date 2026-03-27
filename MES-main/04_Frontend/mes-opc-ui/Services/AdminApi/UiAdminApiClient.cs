@@ -105,6 +105,13 @@ public sealed class UiAdminApiClient(HttpClient http)
         var res = await http.DeleteAsync($"api/v1/ui/bindings/{id}");
         res.EnsureSuccessStatusCode();
     }
+
+    // ---------------- Machines (for Assistant) ----------------
+    public Task<List<MachineDto>?> GetMachinesAsync()
+        => http.GetFromJsonAsync<List<MachineDto>>("api/machines");
+
+    public Task<List<TagMappingDto>?> GetMachineTagsAsync(string machineCode)
+        => http.GetFromJsonAsync<List<TagMappingDto>>($"api/machines/{Uri.EscapeDataString(machineCode)}/tags");
 }
 
 // ---------------- DTOs ----------------
@@ -180,3 +187,11 @@ public class UiWidgetBindingCreateDto
     public string BindingRole { get; set; } = "";
 }
 public sealed class UiWidgetBindingUpdateDto : UiWidgetBindingCreateDto { }
+
+// ---------------- Tag Mapping DTO (for Assistant) ----------------
+public sealed class TagMappingDto
+{
+    public string MachineCode { get; set; } = "";
+    public string OpcNodeId { get; set; } = "";
+    public string? TagLabel { get; set; }
+}

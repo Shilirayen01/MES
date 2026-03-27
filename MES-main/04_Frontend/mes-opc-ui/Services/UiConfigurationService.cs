@@ -18,5 +18,10 @@ namespace mes_opc_ui.Services
             // Returns 404 if nothing is configured in SQL.
             return await _http.GetFromJsonAsync<DashboardDto>("api/ui/dashboards/default", ct);
         }
+
+        public async Task<DashboardDto?> GetDashboardAsync(Guid id, CancellationToken ct = default)
+        {
+            return await _http.GetFromJsonAsync<DashboardDto>($"api/ui/dashboards/{id}", ct);
+        }
     }
 }

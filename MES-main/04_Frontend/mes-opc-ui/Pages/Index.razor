@@ -1,4 +1,5 @@
 @page "/"
+@page "/dashboard/{DashboardId:guid}"
 @implements IDisposable
 @using Mes.Opc.Contracts.Dtos
 @inject mes_opc_ui.Services.UiConfigurationService Ui
@@ -10,22 +11,26 @@
 
 <style>
     .db-page {
-        --bg-card:         #161b22;
-        --bg-elevated:     #1c2128;
-        --border:          #21262d;
-        --border-bright:   #30363d;
-        --accent-blue:     #238be6;
-        --accent-blue-dim: rgba(35, 139, 230, 0.15);
-        --green-badge-bg:  #1f8a5e;
-        --tag-bg:          #122535;
-        --tag-txt:         #58c4dc;
-        --red:             #da3633;
-        --red-dim:         rgba(218,54,51,0.15);
-        --text-primary:    #e6edf3;
-        --text-secondary:  #7d8590;
-        --text-muted:      #3d444d;
-        font-family: 'DM Sans', sans-serif;
-        color: var(--text-primary);
+        --white:      #ffffff;
+        --bg-soft:    #f8fafc;
+        --border:     #e8edf5;
+        --border-soft:#f1f5f9;
+        --accent:     #1e40af;
+        --accent-dim: rgba(30,64,175,0.07);
+        --green:      #059669;
+        --green-bg:   #d1fae5;
+        --green-bdr:  #a7f3d0;
+        --red:        #dc2626;
+        --red-bg:     rgba(220,38,38,0.07);
+        --red-bdr:    #fecaca;
+        --orange-bg:  #fffbeb;
+        --orange-bdr: #fde68a;
+        --orange-txt: #92400e;
+        --text-900:   #0f172a;
+        --text-navy:  #1e4d7b;
+        --text-muted: #64748b;
+        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color: var(--text-900);
     }
 
     /* ── Header ── */
@@ -36,156 +41,163 @@
         margin-bottom: 28px;
         padding-bottom: 18px;
         border-bottom: 1px solid var(--border);
-        position: relative;
         flex-wrap: wrap;
         gap: 12px;
     }
-    .db-page .page-header::after {
-        content: '';
-        position: absolute; bottom: -1px; left: 0;
-        width: 140px; height: 1px;
-        background: linear-gradient(90deg, var(--accent-blue), transparent);
-    }
     .db-page .page-header h2 {
-        font-size: 22px; font-weight: 600; letter-spacing: -0.3px; margin: 0;
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: -0.6px;
+        color: var(--text-900);
+        margin: 0;
     }
 
     /* ── Status Bar ── */
     .db-page .status-bar {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
         flex-wrap: wrap;
     }
     .db-page .status-chip {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 4px 12px;
+        padding: 5px 12px;
         border-radius: 20px;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.3px;
-        text-transform: uppercase;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.1px;
         border: 1px solid transparent;
     }
     .db-page .status-chip .dot {
-        width: 6px; height: 6px;
-        border-radius: 50%;
+        width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
     }
     .db-page .status-connected {
-        background: rgba(31,138,94,0.12);
-        border-color: rgba(31,138,94,0.3);
-        color: #4ade80;
+        background: var(--green-bg);
+        border-color: var(--green-bdr);
+        color: var(--green);
     }
     .db-page .status-connected .dot {
-        background: #4ade80;
-        box-shadow: 0 0 6px #4ade80;
+        background: var(--green);
         animation: dbPulse 2s ease infinite;
     }
     .db-page .status-disconnected {
-        background: rgba(125,133,144,0.1);
-        border-color: var(--border-bright);
-        color: var(--text-secondary);
+        background: var(--bg-soft);
+        border-color: var(--border);
+        color: var(--text-muted);
     }
-    .db-page .status-disconnected .dot { background: var(--text-muted); }
+    .db-page .status-disconnected .dot { background: #cbd5e1; }
     .db-page .status-error {
-        background: var(--red-dim);
-        border-color: rgba(218,54,51,0.3);
-        color: #f87171;
+        background: var(--red-bg);
+        border-color: var(--red-bdr);
+        color: var(--red);
     }
     .db-page .status-error .dot { background: var(--red); animation: dbPulse 1s ease infinite; }
 
-    @@keyframes dbPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    @@keyframes dbPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 
     .db-page .db-btn-reconnect {
         display: inline-flex; align-items: center; gap: 5px;
-        padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 600;
+        padding: 5px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
         cursor: pointer; transition: all 0.15s; font-family: inherit;
-        background: transparent; color: var(--accent-blue);
-        border: 1px solid var(--accent-blue);
+        background: var(--white); color: var(--accent);
+        border: 1px solid #bfdbfe;
     }
-    .db-page .db-btn-reconnect:hover { background: var(--accent-blue-dim); }
+    .db-page .db-btn-reconnect:hover {
+        background: var(--accent-dim); border-color: var(--accent);
+    }
 
     /* ── Alerts ── */
     .db-page .db-alert {
-        border-radius: 10px; padding: 16px 20px; font-size: 13px; margin-bottom: 24px;
+        border-radius: 12px; padding: 16px 20px; font-size: 13px; margin-bottom: 24px;
     }
     .db-page .db-alert-info {
-        background: var(--accent-blue-dim);
-        border: 1px solid rgba(35,139,230,0.25);
-        color: #7db8f0;
+        background: var(--accent-dim); border: 1px solid #bfdbfe; color: var(--accent);
     }
     .db-page .db-alert-warning {
-        background: rgba(217,119,6,0.1);
-        border: 1px solid rgba(217,119,6,0.3);
-        color: #fbbf24;
+        background: var(--orange-bg); border: 1px solid var(--orange-bdr); color: var(--orange-txt);
     }
     .db-page .db-alert code {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 11px;
-        background: rgba(0,0,0,0.25);
-        padding: 2px 6px;
-        border-radius: 4px;
-        color: var(--tag-txt);
+        font-family: 'JetBrains Mono', monospace; font-size: 11px;
+        background: rgba(30,64,175,0.08); padding: 2px 7px;
+        border-radius: 5px; color: var(--accent);
     }
     .db-page .db-alert-title {
-        font-weight: 600; font-size: 14px; margin-bottom: 6px;
+        font-weight: 700; font-size: 14px; margin-bottom: 6px;
         display: flex; align-items: center; gap: 8px;
     }
-    .db-page .db-alert-sub { font-size: 12px; opacity: 0.8; margin-top: 6px; }
+    .db-page .db-alert-sub { font-size: 12px; margin-top: 6px; color: var(--orange-txt); opacity: 0.85; }
+
+    /* ── Zone Tabs ── */
+    .db-page .db-tabs {
+        display: flex; gap: 8px; margin-bottom: 24px;
+        overflow-x: auto; padding-bottom: 4px;
+    }
+    .db-page .db-tab {
+        padding: 8px 18px; border: 1px solid var(--border);
+        background: var(--white); border-radius: 20px;
+        font-size: 13px; font-weight: 600; color: var(--text-navy);
+        cursor: pointer; transition: all 0.2s; white-space: nowrap;
+        box-shadow: 0 1px 2px rgba(15,23,42,0.03);
+    }
+    .db-page .db-tab:hover {
+        border-color: var(--accent-dim); background: var(--bg-soft);
+    }
+    .db-page .db-tab.active {
+        background: var(--accent); color: var(--white);
+        border-color: var(--accent); box-shadow: 0 4px 10px rgba(30,64,175,0.2);
+    }
 
     /* ── Zone Card ── */
     .db-page .zone-card {
-        background: var(--bg-card);
+        background: var(--white);
         border: 1px solid var(--border);
-        border-radius: 12px;
+        border-radius: 16px;
         overflow: hidden;
         margin-bottom: 20px;
-        animation: dbFadeUp 0.4s ease both;
-        position: relative;
+        animation: dbFadeUp 0.35s ease both;
+        box-shadow: 0 1px 4px rgba(15,23,42,0.05);
     }
-    .db-page .zone-card::before {
-        content: '';
-        position: absolute; top: 0; left: 0; right: 0; height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(35,139,230,0.12), transparent);
+    .db-page .zone-card:hover {
+        box-shadow: 0 4px 16px rgba(15,23,42,0.08);
     }
     @@keyframes dbFadeUp {
         from { opacity: 0; transform: translateY(8px); }
         to   { opacity: 1; transform: translateY(0); }
     }
     .db-page .zone-card:nth-child(1) { animation-delay: 0.05s; }
-    .db-page .zone-card:nth-child(2) { animation-delay: 0.12s; }
-    .db-page .zone-card:nth-child(3) { animation-delay: 0.19s; }
-    .db-page .zone-card:nth-child(4) { animation-delay: 0.26s; }
+    .db-page .zone-card:nth-child(2) { animation-delay: 0.10s; }
+    .db-page .zone-card:nth-child(3) { animation-delay: 0.15s; }
+    .db-page .zone-card:nth-child(4) { animation-delay: 0.20s; }
 
     /* ── Zone Header ── */
     .db-page .zone-header {
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 12px 20px;
-        border-bottom: 1px solid var(--border);
-        background: var(--bg-elevated);
+        padding: 13px 20px;
+        border-bottom: 1px solid var(--border-soft);
+        background: var(--bg-soft);
+        border-radius: 14px 14px 14px 14px;
     }
     .db-page .zone-header-dot {
-        width: 7px; height: 7px; border-radius: 50%;
-        background: var(--accent-blue);
-        box-shadow: 0 0 8px rgba(35,139,230,0.5);
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--accent);
         flex-shrink: 0;
     }
     .db-page .zone-title {
-        font-size: 13px; font-weight: 600;
-        color: var(--text-primary); letter-spacing: 0.1px;
+        font-size: 13px; font-weight: 700;
+        color: var(--text-900); letter-spacing: 0.1px;
     }
 
     /* ── Zone Body ── */
     .db-page .zone-body {
-        padding: 16px 18px;
+        padding: 18px 20px;
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
         gap: 14px;
+        transition: all 0.3s;
     }
 </style>
 
@@ -193,7 +205,7 @@
 
     @* ── Page Header ── *@
     <div class="page-header">
-        <h2>Dashboard</h2>
+        <h2><a style="color: var(--text-900); text-decoration: none;" href="/admin/ui-dashboards">Dashboard</a></h2>
 
         <div class="status-bar">
             @if (Hub.IsConnected)
@@ -219,7 +231,7 @@
         </div>
     </div>
 
-    @* ── States ── *@
+    @* ── Tabs ── *@
     @if (_loading)
     {
         <div class="db-alert db-alert-info">
@@ -239,28 +251,44 @@
     }
     else
     {
-        @foreach (var zone in _dashboard.Zones)
+        @if (_dashboard.Zones.Count > 0)
         {
-            <section class="zone-card">
-                <div class="zone-header">
-                    <span class="zone-header-dot"></span>
-                    <span class="zone-title">@zone.Title</span>
-                </div>
-                <div class="zone-body">
-                    @foreach (var widget in zone.Widgets)
-                    {
-                        <WidgetRenderer Widget="widget" />
-                    }
-                </div>
-            </section>
+            <div class="db-tabs">
+                @foreach (var zone in _dashboard.Zones)
+                {
+                    <button class="db-tab @(zone.Id == _activeZoneId ? "active" : "")" @onclick="() => _activeZoneId = zone.Id">
+                        @zone.Title
+                    </button>
+                }
+            </div>
+
+            var activeZone = _dashboard.Zones.FirstOrDefault(z => z.Id == _activeZoneId);
+            if (activeZone is not null)
+            {
+                <section class="zone-card">
+                    <div class="zone-body" @onmouseenter="() => _isHoveringWidgets = true" @onmouseleave="() => _isHoveringWidgets = false">
+                        @foreach (var widget in activeZone.Widgets.OrderByDescending(w => _widgetUpdateTimes.GetValueOrDefault(w.Id, DateTime.MinValue)))
+                        {
+                            <WidgetRenderer Widget="widget" />
+                        }
+                    </div>
+                </section>
+            }
         }
     }
 
 </div>
 
 @code {
+    [Parameter]
+    public Guid DashboardId { get; set; }
+
     private bool _loading = true;
     private DashboardDto? _dashboard;
+    private Guid _activeZoneId = Guid.Empty;
+    private Dictionary<Guid, DateTime> _widgetUpdateTimes = new();
+    private bool _isHoveringWidgets = false;
+    private DateTime _lastUiSortTime = DateTime.MinValue;
     private bool _hubStarted;
     private string? _rtError;
 
@@ -268,14 +296,57 @@
     {
         Store.Changed += OnStoreChanged;
         Hub.StateChanged += OnHubStateChanged;
+        Hub.WidgetUpdated += OnWidgetUpdated;
         Hub.WidgetUpdated += Store.OnWidgetUpdate;
+        await LoadDashboardAsync();
+    }
+
+    private void OnWidgetUpdated(WidgetUpdateDto update)
+    {
+        _widgetUpdateTimes[update.WidgetId] = DateTime.Now;
+
+        if (_isHoveringWidgets) return;
+        
+        // Throttle UI re-sort to every 3 seconds
+        if ((DateTime.Now - _lastUiSortTime).TotalSeconds > 3)
+        {
+            _lastUiSortTime = DateTime.Now;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // If the route changes while on the component, reload the dashboard
+        if (!_loading)
+        {
+            await LoadDashboardAsync();
+            // Assuming realtime reconnect might be needed if dashboard changes
+            _hubStarted = false; 
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        _loading = true;
+        _dashboard = null;
+        StateHasChanged();
+        
         try
         {
-            _dashboard = await Ui.GetDefaultDashboardAsync();
+            _dashboard = await Ui.GetDashboardAsync(DashboardId);
+            
             if (_dashboard is not null)
+            {
                 Store.Configure(_dashboard);
+                _activeZoneId = _dashboard.Zones.FirstOrDefault()?.Id ?? Guid.Empty;
+            }
         }
-        finally { _loading = false; }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -324,6 +395,7 @@
     public void Dispose()
     {
         Hub.WidgetUpdated -= Store.OnWidgetUpdate;
+        Hub.WidgetUpdated -= OnWidgetUpdated;
         Store.Changed -= OnStoreChanged;
         Hub.StateChanged -= OnHubStateChanged;
     }
