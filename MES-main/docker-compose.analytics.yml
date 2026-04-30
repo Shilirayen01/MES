@@ -1,0 +1,38 @@
+# =============================================================================
+# MES OPC Platform  –  AnalyticsWorker (déploiement indépendant)
+# =============================================================================
+# Ce fichier déploie UNIQUEMENT l'AnalyticsWorker, sans toucher aux autres
+# services (API, Realtime, Frontend) définis dans docker-compose.yml.
+#
+# L'AnalyticsWorker communique directement avec la base de données SQL Server
+# (172.22.90.210) — il n'a besoin ni de l'API ni du Realtime.
+#
+# Usage :
+#   1. dotnet publish Mes.Opc.Platform.AnalyticsWorker/Mes.Opc.Platform.AnalyticsWorker.csproj -c Release -o ./publish/analytics
+#   2. docker compose -f docker-compose.analytics.yml up -d
+#   3. docker compose -f docker-compose.analytics.yml logs -f   (pour surveiller)
+# =============================================================================
+
+# Ce nom crée un groupe séparé dans Docker Desktop
+name: mes-analytics-standalone
+
+services:
+
+  analytics:
+    build:
+      context: .
+      dockerfile: Dockerfile.analytics
+    container_name: mes-analytics
+    restart: unless-stopped
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      # Surcharge de la chaîne de connexion SQL (évite de la graver dans l'image)
+      ConnectionStrings__MesOpcDb: "Server=172.22.90.210;Initial Catalog=OpcDb;User ID=cmes_prd;Password=$$CmeS%%Prd!!2023$$;TrustServerCertificate=True"
+    # Aucun port exposé : c'est un worker de fond, pas un serveur HTTP.
+    # Il lit/écrit uniquement en base de données.
+    networks:
+      - analytics-net
+
+networks:
+  analytics-net:
+    driver: bridge

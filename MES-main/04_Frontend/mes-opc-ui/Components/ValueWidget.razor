@@ -1,14 +1,10 @@
-﻿@implements IDisposable
+@implements IDisposable
 @inject mes_opc_ui.Services.WidgetValueStore Store
 
 <div class="widget-body">
-    <div class="widget-value">
-        @(Store.Get(WidgetId, "Option") ?? "—")
+    <div class="widget-value value-main">
+        @(Store.Get(WidgetId, "Value")?? "—")
     </div>
-    <div class="widget-value">
-        value: @(Store.Get(WidgetId, "Value")?? "—")
-    </div>
-    
 </div>
 
 @code {

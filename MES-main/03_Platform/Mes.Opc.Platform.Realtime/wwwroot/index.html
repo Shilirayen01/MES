@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>MES OPC Realtime Test</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.js"></script>
 </head>
+
 <body>
     <h1>MES OPC Realtime Test</h1>
     <p>Incoming tag updates:</p>
@@ -13,12 +15,11 @@
     <script>
         // ✅ REST API host (Mes.Opc.Platform.Api)
         // Change le port si ton Api tourne ailleurs.
-        const apiBaseUrl = "https://localhost:61818";
+        const apiBaseUrl = "http://localhost:5011";
 
         // ✅ SignalR host (Mes.Opc.Platform.Realtime)
         // Ici on peut garder relatif car la page est servie par Realtime (61820)
         const hubUrl = "/opcHub";
-
         const connection = new signalR.HubConnectionBuilder()
             .withUrl(hubUrl, {
                 accessTokenFactory: () => "test" // ton hub est [Authorize]
@@ -69,4 +70,5 @@
         start();
     </script>
 </body>
+
 </html>

@@ -245,17 +245,17 @@
     @* ── Page Header ── *@
     <div class="page-header">
         <div>
-            <h3>Rapports Analytics — Résultats de Production</h3>
-            <p>Consultez les KPIs et résumés calculés après chaque cycle de production.</p>
+            <h3>@Loc.T("page.reports.title")</h3>
+            <p>@Loc.T("page.reports.subtitle")</p>
         </div>
     </div>
 
     @* ── Filter Bar ── *@
     <div class="filter-bar">
         <div class="filter-group">
-            <label>Machine</label>
+            <label>@Loc.T("col.machine")</label>
             <select class="rp-select" @bind="_machine">
-                <option value="">-- Sélectionner --</option>
+                <option value="">@Loc.T("common.select")</option>
                 @foreach (var m in _machines)
                 {
                     <option value="@m.MachineCode">@m.MachineCode — @m.Name</option>
@@ -263,25 +263,25 @@
             </select>
         </div>
         <div class="filter-group">
-            <label>Depuis</label>
+            <label>@Loc.T("common.since")</label>
             <input class="rp-input rp-input-date" type="datetime-local" @bind="_from" />
         </div>
         <div class="filter-group">
-            <label>Jusqu'à</label>
+            <label>@Loc.T("common.until")</label>
             <input class="rp-input rp-input-date" type="datetime-local" @bind="_to" />
         </div>
         <div class="filter-group">
-            <label>Limite</label>
+            <label>@Loc.T("common.limit")</label>
             <input class="rp-input rp-input-num" type="number" @bind="_limit" />
         </div>
         <button class="rp-btn rp-btn-primary" @onclick="Search">
-            Rechercher
+            @Loc.T("common.refresh")
         </button>
     </div>
 
     @if (_error is not null)
     {
-        <div class="rp-alert-danger">@_error</div>
+        <div class="rp-alert-danger">@(_error.Contains("Failed to fetch") ? Loc.T("common.error_fetch") : _error)</div>
     }
 
     @* ── Results ── *@

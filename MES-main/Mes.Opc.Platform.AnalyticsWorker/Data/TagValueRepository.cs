@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using Mes.Opc.Platform.AnalyticsWorker.Domain;
 
 namespace Mes.Opc.Platform.AnalyticsWorker.Data;
@@ -24,11 +24,22 @@ public sealed class TagValueRepository
 
         // ✅ PATCH MULTI-SPOOL : résoudre {ScopeKey} -> SP1/SP2/SP3...
         var resolvedTagNodeId = tagNodeId;
-        if (!string.IsNullOrWhiteSpace(resolvedTagNodeId)
-            && resolvedTagNodeId.Contains("{ScopeKey}")
-            && !string.IsNullOrWhiteSpace(run.ScopeKey))
+        if (!string.IsNullOrWhiteSpace(resolvedTagNodeId) && resolvedTagNodeId.Contains("{ScopeKey}"))
         {
-            resolvedTagNodeId = resolvedTagNodeId.Replace("{ScopeKey}", run.ScopeKey);
+            if (!string.IsNullOrWhiteSpace(run.ScopeKey) && !run.ScopeKey.Equals("Line", StringComparison.OrdinalIgnoreCase))
+            {
+                resolvedTagNodeId = resolvedTagNodeId.Replace("{ScopeKey}", run.ScopeKey);
+            }
+            else
+            {
+                // Machine sans scope (ScopeKey is null, empty or 'Line' default)
+                // Remove the {ScopeKey} placeholder and fix double separators
+                resolvedTagNodeId = resolvedTagNodeId.Replace("{ScopeKey}", "");
+                resolvedTagNodeId = resolvedTagNodeId.Replace("..", ".");
+                resolvedTagNodeId = resolvedTagNodeId.Replace("__", "_");
+                resolvedTagNodeId = resolvedTagNodeId.Replace("s=.", "s=");
+                resolvedTagNodeId = resolvedTagNodeId.Replace("s=_", "s=");
+            }
         }
 
         string sql = scope switch

@@ -101,9 +101,9 @@ public sealed class AnalyticsWorker : BackgroundService
                 }
 
                 await _results.MarkRunProcessedAsync(run.RunId,
-                    kpiDone: machineCfg.Kpis.Count > 0,
-                    summaryDone: machineCfg.Summary is not null,
-                    qualityDone: machineCfg.QualityRuleSet is not null,
+                    kpiDone: true,     // Aucune config = rien à calculer = terminé
+                    summaryDone: true, // Aucune config = rien à calculer = terminé
+                    qualityDone: true, // Aucune config = rien à calculer = terminé
                     error: null,
                     ct);
 

@@ -38,7 +38,9 @@ namespace mes_opc_ui
 
             builder.Services.AddScoped<UiConfigurationService>();
             builder.Services.AddScoped<RealtimeHubService>();
+            builder.Services.AddScoped<LocalizationService>();
             builder.Services.AddSingleton<WidgetValueStore>();
+            builder.Services.AddSingleton<ActivityLogService>();
             builder.Services.AddAdminApiClients(builder.Configuration);
 
             await builder.Build().RunAsync();

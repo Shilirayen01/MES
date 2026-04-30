@@ -35,6 +35,7 @@ namespace Mes.Opc.Platform.Realtime
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            builder.Services.AddWindowsService();
 
             // CORS (dev-friendly): allow the UI to call the API + connect to SignalR.
             // For production, replace with a strict WithOrigins("https://your-ui-host") policy.

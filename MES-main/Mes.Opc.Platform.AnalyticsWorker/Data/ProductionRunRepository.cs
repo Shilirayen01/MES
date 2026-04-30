@@ -40,7 +40,7 @@ public sealed class ProductionRunRepository
                         OR s.SummaryComputedAt IS NULL
                         OR s.QualityComputedAt IS NULL
                       )
-                ORDER BY r.EndTs ASC;";
+                ORDER BY r.EndTs DESC;";
 
         using var conn = _factory.Create();
         var rows = await conn.QueryAsync<ProductionRunRow>(new CommandDefinition(

@@ -1,0 +1,55 @@
+@using mes_opc_ui.Services
+@inject LocalizationService Loc
+
+@if (Show)
+{
+    <div class="modal-backdrop" @onclick="Close">
+        <div class="sm-modal" @onclick:stopPropagation>
+            <div class="sm-header">
+                <h3>Paramètres / Settings / الإعدادات</h3>
+                <button class="sm-close" @onclick="Close">✕</button>
+            </div>
+            <div class="sm-body">
+                <div class="sm-group">
+                    <label>Langue / Language</label>
+                    <div class="sm-langs">
+                        @foreach (var l in LocalizationService.AvailableLanguages)
+                        {
+                            <button class="sm-lang-btn @(Loc.CurrentLang == l.Code ? "active" : "")"
+                                    @onclick="() => Loc.SetLanguageAsync(l.Code)">
+                                <span>@l.Emoji</span>
+                                <span>@l.NativeName</span>
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,0.45); backdrop-filter: blur(2px); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+    .sm-modal { background: #fff; border-radius: 16px; width: 400px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+    .sm-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 20px; }
+    .sm-header h3 { margin: 0; font-size: 18px; color: #0f172a; }
+    .sm-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b; }
+    .sm-langs { display: flex; flex-direction: column; gap: 10px; }
+    .sm-lang-btn { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: transparent; cursor: pointer; font-size: 15px; font-weight: 600; color: #0f172a; transition: all 0.2s; }
+    .sm-lang-btn:hover { background: #f8fafc; border-color: #cbd5e1; }
+    .sm-lang-btn.active { border-color: #1d4ed8; background: #eff6ff; color: #1d4ed8; }
+</style>
+
+@code {
+    [Parameter]
+    public bool Show { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private async Task Close()
+    {
+        if (OnClose.HasDelegate)
+            await OnClose.InvokeAsync();
+    }
+}

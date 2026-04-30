@@ -30,6 +30,16 @@ public sealed class AnalyticsApiClient(HttpClient http)
         res.EnsureSuccessStatusCode();
     }
 
+    /// <summary>
+    /// Met à jour une définition via PUT pour conserver les items existants.
+    /// </summary>
+    public async Task<AnalyticsSummaryDefDto?> UpdateDefinitionAsync(int id, AnalyticsSummaryDefCreateDto dto)
+    {
+        var res = await http.PutAsJsonAsync($"api/v1/analytics/summary/definitions/{id}", dto);
+        res.EnsureSuccessStatusCode();
+        return await res.Content.ReadFromJsonAsync<AnalyticsSummaryDefDto>();
+    }
+
     // ── Items ────────────────────────────────────────────────────────────────
 
     public async Task<AnalyticsSummaryItemDto?> AddItemAsync(int defId, AnalyticsSummaryItemCreateDto dto)

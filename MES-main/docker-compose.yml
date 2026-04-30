@@ -1,0 +1,80 @@
+# =============================================================================
+# MES OPC Platform  –  Docker Compose
+# Build context: repository root  (MES-main/)
+# =============================================================================
+#
+# Services:
+#   api       – Mes.Opc.Platform.Api      → http://localhost:5011
+#   realtime  – Mes.Opc.Platform.Realtime → http://localhost:5002
+#   frontend  – mes-opc-ui (Blazor WASM)  → http://localhost:5013
+#
+# Usage:
+#   docker compose build
+#   docker compose up -d
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # REST API
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .                   # solution root → resolves shared project refs
+      dockerfile: 03_Platform/Mes.Opc.Platform.Api/Dockerfile.api
+    container_name: mes-api
+    restart: unless-stopped
+    ports:
+      - "5011:8080"                # host:5011 → container:8080 (5001 réservé par Hyper-V)
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # Override the connection string at runtime (avoids baking credentials in the image)
+      ConnectionStrings__DefaultConnection: "Server=172.22.90.210;Initial Catalog=OpcDb;User ID=cmes_prd;Password=$$CmeS%%Prd!!2023$;TrustServerCertificate=True"
+    networks:
+      - mes-net
+
+  # ---------------------------------------------------------------------------
+  # Realtime / SignalR gateway
+  # network_mode: host → direct access to factory PLC at 172.22.90.210
+  # NOTE: when using host network, 'ports' and 'networks' mappings are ignored
+  # by Docker; the service binds directly on the host's network stack.
+  # ---------------------------------------------------------------------------
+  realtime:
+    build:
+      context: .
+      dockerfile: 03_Platform/Mes.Opc.Platform.Realtime/Dockerfile.realtime
+    container_name: mes-realtime
+    restart: unless-stopped
+    ports:
+      - "5002:5002"                # host:5002 → container:5002
+    networks:
+      - mes-net
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: "http://+:5002"
+      ConnectionStrings__DefaultConnection: "Server=172.22.90.210;Initial Catalog=OpcDb;User ID=cmes_prd;Password=$$CmeS%%Prd!!2023$;TrustServerCertificate=True"
+
+  # ---------------------------------------------------------------------------
+  # Frontend – Blazor WebAssembly served by Nginx
+  # The Blazor app runs in the USER's browser, so API URLs must be
+  # the HOST's address (localhost) and NOT an internal Docker service name.
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: 04_Frontend/mes-opc-ui/Dockerfile.frontend
+    container_name: mes-frontend
+    restart: unless-stopped
+    ports:
+      - "5013:80"                  # host:5013 → nginx:80 (5003 réservé par Hyper-V)
+    networks:
+      - mes-net
+    depends_on:
+      - api
+
+# ---------------------------------------------------------------------------
+# Shared bridge network (realtime uses host network instead)
+# ---------------------------------------------------------------------------
+networks:
+  mes-net:
+    driver: bridge

@@ -1,17 +1,20 @@
-﻿@page "/admin/machines/{MachineCode}/tag-mappings"
+@page "/admin/machines/{MachineCode}/tag-mappings"
 @using mes_opc_ui.Services.AdminApi
+@using mes_opc_ui.Services
 @using Microsoft.AspNetCore.Components.Forms
 @inject TagMappingsApiClient Api
 @inject NavigationManager Nav
+@inject ActivityLogService ActivityLog
 
 <style>
+    /* ── CSS Variables ── */
     .tm-page {
         --white:       #ffffff;
         --bg-soft:     #f8fafc;
         --border:      #e8edf5;
         --border-soft: #f1f5f9;
-        --accent:      #1e40af;
-        --accent-dim:  rgba(30,64,175,0.07);
+        --accent:      #020495;
+        --accent-dim:  rgba(2,4,149,0.07);
         --green-bg:    #d1fae5;
         --green-txt:   #065f46;
         --green-bdr:   #a7f3d0;
@@ -19,7 +22,6 @@
         --tag-txt:     #1e40af;
         --tag-bdr:     #bfdbfe;
         --pink:        #be185d;
-        --orange:      #d97706;
         --orange-bg:   #fffbeb;
         --orange-bdr:  #fde68a;
         --orange-txt:  #92400e;
@@ -45,9 +47,16 @@
     }
     .tm-page .page-header p { font-size: 13px; color: var(--text-navy); margin: 0; }
     .tm-page .header-machine {
-        font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700;
+        font-family: monospace; font-size: 14px; font-weight: 700;
         color: var(--accent); background: var(--tag-bg);
         border: 1px solid var(--tag-bdr); padding: 2px 10px; border-radius: 6px;
+    }
+    .tm-page .total-badge {
+        display: inline-flex; align-items: center; gap: 5px;
+        background: #eff6ff; border: 1px solid #bfdbfe;
+        color: #1e40af; border-radius: 20px;
+        font-size: 12px; font-weight: 700; padding: 2px 10px;
+        margin-left: 10px;
     }
 
     /* ── Toolbar ── */
@@ -63,27 +72,10 @@
         cursor: pointer; transition: all 0.15s; border: 1px solid transparent;
         font-family: inherit; line-height: 1.4;
     }
-    .tm-page .tm-btn-primary {
-        background: var(--accent); color: #fff; border-color: var(--accent);
-    }
-    .tm-page .tm-btn-primary:hover {
-        background: #1e3a8a; box-shadow: 0 4px 14px rgba(30,64,175,0.25); transform: translateY(-1px);
-    }
-    .tm-page .tm-btn-ghost {
-        background: var(--white); color: var(--text-muted); border-color: var(--border);
-    }
-    .tm-page .tm-btn-ghost:hover {
-        color: var(--text-900); border-color: #c8d2e0; background: var(--bg-soft);
-    }
-    .tm-page .tm-btn-sm { font-size: 11px; padding: 4px 10px; border-radius: 6px; }
-    .tm-page .tm-btn-outline {
-        background: var(--accent-dim); color: var(--accent); border-color: var(--tag-bdr);
-    }
-    .tm-page .tm-btn-outline:hover { background: var(--tag-bg); }
-    .tm-page .tm-btn-warn {
-        background: var(--orange-bg); color: var(--orange-txt); border-color: var(--orange-bdr);
-    }
-    .tm-page .tm-btn-warn:hover { background: #fef3c7; }
+    .tm-page .tm-btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .tm-page .tm-btn-primary:hover { background: #010370; box-shadow: 0 4px 14px rgba(2,4,149,0.25); transform: translateY(-1px); }
+    .tm-page .tm-btn-ghost { background: var(--white); color: var(--text-muted); border-color: var(--border); }
+    .tm-page .tm-btn-ghost:hover { color: var(--text-900); border-color: #c8d2e0; background: var(--bg-soft); }
 
     /* ── Alert ── */
     .tm-page .tm-alert-danger {
@@ -95,69 +87,123 @@
 
     /* ── Table Card ── */
     .tm-page .table-card {
-        background: var(--white); border: 1px solid var(--border);
+        background: var(--white); border: 1px solid #c9c9c9;
         border-radius: 14px; overflow: hidden; margin-bottom: 24px;
         box-shadow: 0 1px 4px rgba(15,23,42,0.05);
     }
-    .tm-page .table-scroll { overflow-x: auto; }
-    .tm-page .table-scroll::-webkit-scrollbar { height: 4px; }
-    .tm-page .table-scroll::-webkit-scrollbar-track { background: var(--bg-soft); }
-    .tm-page .table-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
+    .tm-page .table-scroll { overflow-x: auto; min-height: 350px; }
     .tm-page .tm-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .tm-page .tm-table th {
-        text-align: left; padding: 10px 14px; white-space: nowrap;
-        color: var(--text-navy); font-size: 10px; font-weight: 600;
-        text-transform: uppercase; letter-spacing: 0.5px;
-        border: 1px solid #1e3a5f; background: var(--bg-soft);
-    }
-    .tm-page .tm-table td {
-        padding: 11px 14px; color: var(--text-900);
-        border: 1px solid #1e3a5f; vertical-align: middle;
-        white-space: normal; word-break: break-word;
-    }
-    .tm-page .tm-table tbody tr:hover td { background: #eff6ff; }
 
-    .tm-page .cell-id {
-        font-family: 'JetBrains Mono', monospace; font-size: 11px;
-        color: var(--text-muted); font-weight: 600;
+    /* ── EWM-style HEADER ── */
+    .tm-page .tm-table thead > tr > th {
+        background-color: #020495; color: #ffffff;
+        font-size: 10px; font-weight: 800; text-transform: uppercase;
+        letter-spacing: 0.5px; padding: 0 !important;
+        border: 1px solid rgba(255,255,255,0.2); white-space: nowrap;
+        vertical-align: middle;
     }
-    .tm-page .cell-nodeid {
-        font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent);
-        white-space: normal; word-break: break-all; display: block;
+
+    .tm-page .th-inner {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 8px 12px; min-height: 36px; gap: 6px; cursor: pointer;
     }
-    .tm-page .cell-char { font-size: 12px; color: var(--pink); font-weight: 700; }
-    .tm-page .cell-type {
-        font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-navy);
+    .tm-page .th-inner .th-label { flex: 1; }
+    .tm-page .th-inner .th-search-icon { opacity: 0.6; flex-shrink: 0; }
+    .tm-page .th-inner:hover .th-search-icon { opacity: 1; }
+
+    .tm-page .th-search-box {
+        display: flex; align-items: center;
+        background: #ffffff; border: 1.5px solid #020495;
+        border-radius: 4px; margin: 4px 8px; overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.12);
     }
-    .tm-page .cell-num {
-        font-family: 'JetBrains Mono', monospace; font-size: 11px;
-        color: var(--text-navy); text-align: right; display: block;
+    .tm-page .th-search-box input {
+        flex: 1; border: none; outline: none; padding: 4px 8px;
+        font-size: 11px; font-weight: 700; color: #020495;
+        background: transparent; font-family: inherit; width: 100px;
     }
+    .tm-page .th-search-box input::placeholder { color: #94a3b8; font-weight: 500; }
+    .tm-page .th-search-box .th-clear {
+        color: #94a3b8; padding: 0 6px; cursor: pointer; font-size: 11px;
+        display: flex; align-items: center; transition: color 0.15s;
+    }
+    .tm-page .th-search-box .th-clear:hover { color: #ef4444; }
+
+    /* ── Table BODY ── */
+    .tm-page .tm-table tbody > tr > td {
+        padding: 8px 12px; color: #334155;
+        border: 1px solid #c9c9c9; vertical-align: middle;
+        white-space: nowrap; font-size: 12px;
+    }
+    .tm-page .tm-table tbody > tr:hover > td { background-color: #f8fafc; }
+
+    /* ── Cells ── */
+    .tm-page .cell-id { font-family: monospace; font-size: 11px; color: var(--text-muted); font-weight: 600; }
+    .tm-page .cell-nodeid { font-family: monospace; font-size: 11px; color: #020495; font-weight: 600; display: block; }
+    .tm-page .cell-char { font-size: 12px; color: #be185d; font-weight: 700; }
+    .tm-page .cell-type { font-family: monospace; font-size: 11px; color: #1e4d7b; }
+    .tm-page .cell-num { font-family: monospace; font-size: 11px; color: #1e4d7b; display: block; }
+
     .tm-page .badge-active {
         display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px;
-        border-radius: 6px; background: var(--green-bg); border: 1px solid var(--green-bdr);
-        color: var(--green-txt); font-size: 10px; font-weight: 700; text-transform: uppercase;
+        border-radius: 6px; background: #d1fae5; border: 1px solid #a7f3d0;
+        color: #065f46; font-size: 10px; font-weight: 700; text-transform: uppercase;
+        white-space: nowrap;
     }
     .tm-page .badge-active::before {
         content: ''; width: 5px; height: 5px; border-radius: 50%;
-        background: var(--green-txt); animation: tmPulse 2s ease infinite;
+        background: #065f46; animation: tmPulse 2s ease infinite;
     }
     .tm-page .badge-inactive {
         display: inline-flex; padding: 3px 9px; border-radius: 6px;
-        background: var(--bg-soft); border: 1px solid var(--border);
-        color: var(--text-muted); font-size: 10px; font-weight: 700; text-transform: uppercase;
+        background: #f8fafc; border: 1px solid #e8edf5;
+        color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase;
+        white-space: nowrap;
     }
     @@keyframes tmPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-    .tm-page .cell-actions { display: flex; gap: 6px; white-space: nowrap; }
+
+    /* ── Actions ── */
+    .tm-page .cell-actions { display: flex; gap: 6px; align-items: center; justify-content: center; }
+    .tm-page .icon-btn {
+        background: none; border: none; cursor: pointer; padding: 4px 6px;
+        color: #475569; display: inline-flex; flex-direction: row;
+        align-items: center; gap: 5px; transition: color 0.15s;
+        font-size: 11px; font-weight: 600; font-family: inherit;
+        border-radius: 6px; white-space: nowrap;
+    }
+    .tm-page .icon-btn:hover { color: #020495; background: #f1f5f9; }
+    .tm-page .icon-btn.danger:hover { color: #dc2626; background: #fef2f2; }
+
+    /* ── View Settings Popover ── */
+    .tm-page .vs-popover {
+        position: absolute; top: calc(100% + 5px); right: 0;
+        background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15); width: 230px;
+        z-index: 100; color: #0f172a; text-align: left;
+        display: flex; flex-direction: column; overflow: hidden;
+        animation: vsFade 0.15s ease-out; font-family: 'DM Sans', sans-serif;
+    }
+    @@keyframes vsFade { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+    .tm-page .vs-header {
+        font-size: 10px; font-weight: 800; color: #94a3b8;
+        padding: 12px 14px 8px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .tm-page .vs-body { padding: 4px 14px 12px; display: flex; flex-direction: column; gap: 8px; }
+    .tm-page .vs-check { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 500; font-family: inherit; }
+    .tm-page .vs-check input[type="checkbox"] { accent-color: #020495; width: 14px; height: 14px; cursor: pointer; }
+    .tm-page .vs-footer {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 10px 14px; background: #f8fafc; border-top: 1px solid #e2e8f0;
+    }
+    .tm-page .vs-count { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; }
+    .tm-page .vs-restore { font-size: 10px; font-weight: 800; color: #020495; cursor: pointer; background: none; border: none; text-transform: uppercase; transition: color 0.15s; font-family: inherit; padding: 0; }
+    .tm-page .vs-restore:hover { color: #010370; text-decoration: underline; }
 
     /* ── Form Panel ── */
     .tm-page .form-panel {
-        background: var(--white); border: 1px solid var(--border);
-        border-radius: 14px; overflow: hidden; margin-bottom: 24px;
-        box-shadow: 0 1px 4px rgba(15,23,42,0.05);
-        border-top: 3px solid var(--accent);
-        animation: tmFadeUp 0.25s ease;
+        background: var(--white); border: 1px solid var(--border); border-radius: 14px;
+        overflow: hidden; margin-bottom: 24px; box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+        border-top: 3px solid var(--accent); animation: tmFadeUp 0.25s ease;
     }
     @@keyframes tmFadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -165,59 +211,35 @@
         display: flex; align-items: center; justify-content: space-between;
         padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--bg-soft);
     }
-    .tm-page .form-panel-title {
-        font-size: 14px; font-weight: 700; color: var(--text-900);
-        display: flex; align-items: center; gap: 8px;
-    }
+    .tm-page .form-panel-title { font-size: 14px; font-weight: 700; color: var(--text-900); display: flex; align-items: center; gap: 8px; }
     .tm-page .form-panel-title .edit-id {
-        font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent);
+        font-family: monospace; font-size: 12px; color: var(--accent);
         background: var(--tag-bg); border: 1px solid var(--tag-bdr); padding: 1px 7px; border-radius: 5px;
     }
-
-    .tm-page .form-panel-body {
-        padding: 20px;
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 14px 16px;
-    }
+    .tm-page .form-panel-body { padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px 16px; }
     .tm-page .form-section-label {
-        font-size: 11px; font-weight: 700; color: var(--accent);
-        text-transform: uppercase; letter-spacing: 0.6px;
-        grid-column: 1 / -1; padding-bottom: 6px;
-        position: relative; margin-top: 6px;
-        display: flex; align-items: center; gap: 8px;
+        font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.6px;
+        grid-column: 1 / -1; padding-bottom: 6px; position: relative; margin-top: 6px; display: flex; align-items: center; gap: 8px;
     }
-    .tm-page .form-section-label::after {
-        content: ''; flex: 1; height: 1px; background: var(--border);
-    }
+    .tm-page .form-section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
     .tm-page .form-group { display: flex; flex-direction: column; gap: 5px; }
-    .tm-page .form-group label {
-        font-size: 11px; color: var(--text-navy); font-weight: 600;
-        text-transform: uppercase; letter-spacing: 0.5px;
-    }
+    .tm-page .form-group label { font-size: 11px; color: var(--text-navy); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
     .tm-page .form-group.full-width { grid-column: 1 / -1; }
     .tm-page .tm-input {
-        background: var(--bg-soft); border: 1.5px solid var(--border);
-        color: var(--text-900); border-radius: 8px; padding: 8px 10px;
-        font-size: 13px; font-family: inherit; width: 100%; transition: border-color 0.15s;
+        background: var(--bg-soft); border: 1.5px solid var(--border); color: var(--text-900);
+        border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit; width: 100%; transition: border-color 0.15s;
     }
-    .tm-page .tm-input.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
-    .tm-page .tm-input:focus {
-        outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim);
-    }
+    .tm-page .tm-input.mono { font-family: monospace; font-size: 12px; }
+    .tm-page .tm-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
     .tm-page .form-check-row { display: flex; align-items: center; gap: 8px; padding-top: 22px; }
-    .tm-page .form-check-row input[type="checkbox"] {
-        accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer;
-    }
+    .tm-page .form-check-row input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
     .tm-page .form-check-row label { font-size: 13px; color: var(--text-900); cursor: pointer; }
     .tm-page .form-panel-footer {
-        display: flex; align-items: center; gap: 10px;
-        padding: 14px 20px; border-top: 1px solid var(--border); background: var(--bg-soft);
+        display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--border); background: var(--bg-soft);
     }
     .tm-page .validation-errors {
-        background: var(--red-bg); border: 1px solid var(--red-bdr);
-        border-radius: 8px; padding: 8px 12px; font-size: 12px;
-        color: var(--red); grid-column: 1 / -1;
+        background: var(--red-bg); border: 1px solid var(--red-bdr); border-radius: 8px;
+        padding: 8px 12px; font-size: 12px; color: var(--red); grid-column: 1 / -1;
     }
 </style>
 
@@ -225,7 +247,11 @@
 
     <div class="page-header">
         <div>
-            <h3>Tag Mappings <span class="header-machine">@MachineCode</span></h3>
+            <h3>
+                Tag Mappings 
+                <span class="header-machine">@MachineCode</span>
+                <span class="total-badge">@Loc.T("common.total") @(FilteredItems?.Count ?? 0)</span>
+            </h3>
             <p>Configuration des tags OPC-UA pour cette machine</p>
         </div>
     </div>
@@ -234,12 +260,77 @@
         <button class="tm-btn tm-btn-primary" @onclick="New">+ Nouveau Mapping</button>
         <div class="toolbar-sep"></div>
         <button class="tm-btn tm-btn-ghost" @onclick="Back">← Retour Machines</button>
-        <button class="tm-btn tm-btn-ghost" @onclick="Load">Rafraîchir</button>
+        <button class="tm-btn tm-btn-ghost" @onclick="Load">↻ Rafraîchir</button>
     </div>
 
     @if (Error is not null)
     {
         <div class="tm-alert-danger">@Error</div>
+    }
+
+    @* ── Form: Créer (TOP) ── *@
+    @if (CreateForm is not null)
+    {
+        <div class="form-panel">
+            <div class="form-panel-header">
+                <div class="form-panel-title">
+                    + Créer Mapping <span class="edit-id">@MachineCode</span>
+                </div>
+                <button class="tm-btn tm-btn-ghost" style="font-size:11px;padding:4px 10px;border-radius:6px;" @onclick="Cancel">Fermer</button>
+            </div>
+            <EditForm Model="CreateForm" OnValidSubmit="SaveCreate">
+                <DataAnnotationsValidator />
+                <div class="form-panel-body">
+                    <ValidationSummary class="validation-errors" />
+                    
+                    <div class="form-section-label">Identification</div>
+                    <div class="form-group full-width">
+                        <label>OPC Node Id</label>
+                        <InputText class="tm-input mono" @bind-Value="CreateForm.OpcNodeId" placeholder="ns=2;s=Tag..." />
+                    </div>
+                    <div class="form-group">
+                        <label>Characteristic Code</label>
+                        <InputText class="tm-input" @bind-Value="CreateForm.CharacteristicCode" placeholder="TEMP_01" />
+                    </div>
+                    <div class="form-group">
+                        <label>Data Type</label>
+                        <InputText class="tm-input" @bind-Value="CreateForm.DataTypeExpected" placeholder="Double, Int32…" />
+                    </div>
+                    <div class="form-group">
+                        <label>Unité</label>
+                        <InputText class="tm-input" @bind-Value="CreateForm.Unit" placeholder="°C, bar…" />
+                    </div>
+                    
+                    <div class="form-section-label">Plage de valeurs</div>
+                    <div class="form-group">
+                        <label>Min Value</label>
+                        <InputNumber class="tm-input" TValue="double?" @bind-Value="CreateForm.MinValue" placeholder="0" />
+                    </div>
+                    <div class="form-group">
+                        <label>Max Value</label>
+                        <InputNumber class="tm-input" TValue="double?" @bind-Value="CreateForm.MaxValue" placeholder="100" />
+                    </div>
+                    
+                    <div class="form-section-label">Timing OPC-UA</div>
+                    <div class="form-group">
+                        <label>Sampling (ms)</label>
+                        <InputNumber class="tm-input" TValue="int?" @bind-Value="CreateForm.SamplingMs" placeholder="500" />
+                    </div>
+                    <div class="form-group">
+                        <label>Publishing (ms)</label>
+                        <InputNumber class="tm-input" TValue="int?" @bind-Value="CreateForm.PublishingMs" placeholder="1000" />
+                    </div>
+                    <div class="form-check-row">
+                        <InputCheckbox @bind-Value="CreateForm.IsActive" id="createActive" />
+                        <label for="createActive">Mapping actif</label>
+                    </div>
+                </div>
+                <div class="form-panel-footer">
+                    <button type="submit" class="tm-btn tm-btn-primary">Enregistrer</button>
+                    <button type="button" class="tm-btn tm-btn-ghost" @onclick="Cancel">Annuler</button>
+                </div>
+            </EditForm>
+        </div>
     }
 
     @if (Items is null)
@@ -253,34 +344,131 @@
                 <table class="tm-table">
                     <thead>
                         <tr>
-                            <th style="width:50px;">Id</th>
-                            <th>OPC Node Id</th>
-                            <th>Caractéristique</th>
-                            <th>Type</th>
-                            <th style="text-align:right;">Sampling</th>
-                            <th style="text-align:right;">Publishing</th>
-                            <th>Statut</th>
-                            <th></th>
+                            @if (ShowColId) { <th style="width:50px;"><div class="th-inner"><span class="th-label">ID</span></div></th> }
+                            
+                            @* ── OPC NODE ID column ── *@
+                            @if (ShowColNodeId)
+                            {
+                                <th>
+                                    @if (ShowSearchNodeId || SearchNodeId.Length > 0)
+                                    {
+                                        <div class="th-search-box">
+                                            <input placeholder="Node Id..." @bind-value="SearchNodeId" @bind-value:event="oninput" autofocus />
+                                            <span class="th-clear" @onclick='() => { SearchNodeId = string.Empty; ShowSearchNodeId = false; }'>✕</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="th-inner" @onclick='() => ShowSearchNodeId = true'>
+                                            <span class="th-label">OPC NODE ID</span>
+                                            <svg class="th-search-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                        </div>
+                                    }
+                                </th>
+                            }
+
+                            @* ── CARACTERISTIQUE column ── *@
+                            @if (ShowColChar)
+                            {
+                                <th>
+                                    @if (ShowSearchChar || SearchChar.Length > 0)
+                                    {
+                                        <div class="th-search-box">
+                                            <input placeholder="Caractéristique..." @bind-value="SearchChar" @bind-value:event="oninput" autofocus />
+                                            <span class="th-clear" @onclick='() => { SearchChar = string.Empty; ShowSearchChar = false; }'>✕</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="th-inner" @onclick='() => ShowSearchChar = true'>
+                                            <span class="th-label">CARACTÉRISTIQUE</span>
+                                            <svg class="th-search-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                        </div>
+                                    }
+                                </th>
+                            }
+
+                            @* ── TYPE column ── *@
+                            @if (ShowColType)
+                            {
+                                <th>
+                                    @if (ShowSearchType || SearchType.Length > 0)
+                                    {
+                                        <div class="th-search-box">
+                                            <input placeholder="Type..." @bind-value="SearchType" @bind-value:event="oninput" autofocus />
+                                            <span class="th-clear" @onclick='() => { SearchType = string.Empty; ShowSearchType = false; }'>✕</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="th-inner" @onclick='() => ShowSearchType = true'>
+                                            <span class="th-label">TYPE</span>
+                                            <svg class="th-search-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                        </div>
+                                    }
+                                </th>
+                            }
+
+                            @if (ShowColSampling) { <th><div class="th-inner" style="justify-content: flex-end;"><span class="th-label">SAMPLING</span></div></th> }
+                            @if (ShowColPublishing) { <th><div class="th-inner" style="justify-content: flex-end;"><span class="th-label">PUBLISHING</span></div></th> }
+                            @if (ShowColStatut) { <th style="width:90px;min-width:90px"><div class="th-inner"><span class="th-label">STATUT</span></div></th> }
+                            <th style="width:160px;min-width:160px;position: relative;">
+                                <div class="th-inner" style="justify-content: space-between;">
+                                    <span class="th-label">ACTIONS</span>
+                                    <svg @onclick="() => ShowViewSettings = !ShowViewSettings" style="cursor: pointer; opacity: 0.8;" xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                    </svg>
+                                </div>
+                                @if (ShowViewSettings)
+                                {
+                                    <div class="vs-popover" @onclick:stopPropagation>
+                                        <div class="vs-header">VIEW SETTINGS</div>
+                                        <div class="vs-body">
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColId" /> ID</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColNodeId" /> Node ID</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColChar" /> Caractéristique</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColType" /> Type</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColSampling" /> Sampling</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColPublishing" /> Publishing</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColStatut" /> Statut</label>
+                                        </div>
+                                        <div class="vs-footer">
+                                            <span class="vs-count">@ActiveColsCount / 7 ACTIVE</span>
+                                            <button class="vs-restore" @onclick="RestoreColumns">RESTORE</button>
+                                        </div>
+                                    </div>
+                                }
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var t in Items)
+                        @foreach (var t in FilteredItems ?? [])
                         {
                             <tr>
-                                <td><span class="cell-id">#@t.Id</span></td>
-                                <td><span class="cell-nodeid" title="@t.OpcNodeId">@t.OpcNodeId</span></td>
-                                <td><span class="cell-char">@t.CharacteristicCode</span></td>
-                                <td><span class="cell-type">@t.DataTypeExpected</span></td>
-                                <td><span class="cell-num">@(t.SamplingMs.HasValue ? $"{t.SamplingMs} ms" : "—")</span></td>
-                                <td><span class="cell-num">@(t.PublishingMs.HasValue ? $"{t.PublishingMs} ms" : "—")</span></td>
-                                <td>
-                                    @if (t.IsActive) { <span class="badge-active">Actif</span> }
-                                    else             { <span class="badge-inactive">Inactif</span> }
-                                </td>
+                                @if (ShowColId) { <td><span class="cell-id">#@t.Id</span></td> }
+                                @if (ShowColNodeId) { <td><span class="cell-nodeid" title="@t.OpcNodeId">@t.OpcNodeId</span></td> }
+                                @if (ShowColChar) { <td><span class="cell-char">@t.CharacteristicCode</span></td> }
+                                @if (ShowColType) { <td><span class="cell-type">@t.DataTypeExpected</span></td> }
+                                @if (ShowColSampling) { <td><span class="cell-num">@(t.SamplingMs.HasValue ? $"{t.SamplingMs} ms" : "—")</span></td> }
+                                @if (ShowColPublishing) { <td><span class="cell-num">@(t.PublishingMs.HasValue ? $"{t.PublishingMs} ms" : "—")</span></td> }
+                                @if (ShowColStatut)
+                                {
+                                    <td>
+                                        @if (t.IsActive) { <span class="badge-active">@Loc.T("common.active")</span> }
+                                        else             { <span class="badge-inactive">@Loc.T("common.inactive")</span> }
+                                    </td>
+                                }
                                 <td>
                                     <div class="cell-actions">
-                                        <button class="tm-btn tm-btn-outline tm-btn-sm" @onclick="() => Edit(t)">Edit</button>
-                                        <button class="tm-btn tm-btn-warn tm-btn-sm" @onclick="() => Deactivate(t)">Désactiver</button>
+                                        <button class="icon-btn" title="Edit" @onclick="() => Edit(t)">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                            Edit
+                                        </button>
+                                        <button class="icon-btn danger" title="Désactiver" @onclick="() => Deactivate(t)">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                            Désactiver
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -297,12 +485,13 @@
         <div class="form-panel">
             <div class="form-panel-header">
                 <div class="form-panel-title">+ Créer Mapping</div>
-                <button class="tm-btn tm-btn-ghost tm-btn-sm" @onclick="Cancel">Fermer</button>
+                <button class="tm-btn tm-btn-ghost" style="font-size:11px;padding:4px 10px;border-radius:6px;" @onclick="Cancel">Fermer</button>
             </div>
             <EditForm Model="CreateForm" OnValidSubmit="SaveCreate">
                 <DataAnnotationsValidator />
                 <div class="form-panel-body">
                     <ValidationSummary class="validation-errors" />
+                    
                     <div class="form-section-label">Identification</div>
                     <div class="form-group full-width">
                         <label>OPC Node Id</label>
@@ -320,6 +509,7 @@
                         <label>Unité</label>
                         <InputText class="tm-input" @bind-Value="CreateForm.Unit" placeholder="°C, bar…" />
                     </div>
+                    
                     <div class="form-section-label">Plage de valeurs</div>
                     <div class="form-group">
                         <label>Min Value</label>
@@ -329,6 +519,7 @@
                         <label>Max Value</label>
                         <InputNumber class="tm-input" TValue="double?" @bind-Value="CreateForm.MaxValue" placeholder="100" />
                     </div>
+                    
                     <div class="form-section-label">Timing OPC-UA</div>
                     <div class="form-group">
                         <label>Sampling (ms)</label>
@@ -359,12 +550,13 @@
                 <div class="form-panel-title">
                     Modifier Mapping <span class="edit-id">#@EditId</span>
                 </div>
-                <button class="tm-btn tm-btn-ghost tm-btn-sm" @onclick="Cancel">Fermer</button>
+                <button class="tm-btn tm-btn-ghost" style="font-size:11px;padding:4px 10px;border-radius:6px;" @onclick="Cancel">Fermer</button>
             </div>
             <EditForm Model="UpdateForm" OnValidSubmit="SaveUpdate">
                 <DataAnnotationsValidator />
                 <div class="form-panel-body">
                     <ValidationSummary class="validation-errors" />
+                    
                     <div class="form-section-label">Identification</div>
                     <div class="form-group full-width">
                         <label>OPC Node Id</label>
@@ -382,6 +574,7 @@
                         <label>Unité</label>
                         <InputText class="tm-input" @bind-Value="UpdateForm.Unit" />
                     </div>
+                    
                     <div class="form-section-label">Plage de valeurs</div>
                     <div class="form-group">
                         <label>Min Value</label>
@@ -391,6 +584,7 @@
                         <label>Max Value</label>
                         <InputNumber class="tm-input" TValue="double?" @bind-Value="UpdateForm.MaxValue" />
                     </div>
+                    
                     <div class="form-section-label">Timing OPC-UA</div>
                     <div class="form-group">
                         <label>Sampling (ms)</label>
@@ -421,6 +615,39 @@
     private List<MachineTagMappingDto>? Items;
     private string? Error;
 
+    // Search logic properties
+    private bool ShowSearchNodeId = false;
+    private string SearchNodeId = "";
+    private bool ShowSearchChar = false;
+    private string SearchChar = "";
+    private bool ShowSearchType = false;
+    private string SearchType = "";
+
+    // View Settings Variables
+    private bool ShowViewSettings = false;
+    private bool ShowColId = true;
+    private bool ShowColNodeId = true;
+    private bool ShowColChar = true;
+    private bool ShowColType = true;
+    private bool ShowColSampling = true;
+    private bool ShowColPublishing = true;
+    private bool ShowColStatut = true;
+
+    private int ActiveColsCount => (ShowColId ? 1 : 0) + (ShowColNodeId ? 1 : 0) + (ShowColChar ? 1 : 0) + (ShowColType ? 1 : 0) + (ShowColSampling ? 1 : 0) + (ShowColPublishing ? 1 : 0) + (ShowColStatut ? 1 : 0);
+
+    private void RestoreColumns()
+    {
+        ShowColId = true; ShowColNodeId = true; ShowColChar = true;
+        ShowColType = true; ShowColSampling = true; ShowColPublishing = true; ShowColStatut = true;
+    }
+
+    // Calculated filtered list using LINQ (ignoring null/whitespace inputs)
+    private List<MachineTagMappingDto>? FilteredItems => Items?.Where(m =>
+        (string.IsNullOrWhiteSpace(SearchNodeId) || (m.OpcNodeId?.Contains(SearchNodeId.Trim(), StringComparison.OrdinalIgnoreCase) ?? false)) &&
+        (string.IsNullOrWhiteSpace(SearchChar) || (m.CharacteristicCode?.Contains(SearchChar.Trim(), StringComparison.OrdinalIgnoreCase) ?? false)) &&
+        (string.IsNullOrWhiteSpace(SearchType) || (m.DataTypeExpected?.Contains(SearchType.Trim(), StringComparison.OrdinalIgnoreCase) ?? false))
+    ).ToList();
+
     private MachineTagMappingCreateDto? CreateForm;
     private MachineTagMappingUpdateDto? UpdateForm;
     private int EditId;
@@ -450,24 +677,52 @@
 
     private async Task Deactivate(MachineTagMappingDto t)
     {
-        try { await Api.DeleteAsync(t.Id); await Load(); }
+        try
+        {
+            await Api.DeleteAsync(t.Id);
+            ActivityLog.LogDelete(
+                $"Mapping #{t.Id} supprimé",
+                "Machine Tags",
+                $"OpcNode: {t.OpcNodeId} sur {MachineCode}");
+            await Load();
+        }
         catch (Exception ex) { Error = ex.Message; }
     }
 
     private async Task SaveCreate()
     {
         if (CreateForm is null) return;
-        try { await Api.CreateAsync(MachineCode, CreateForm); CreateForm = null; await Load(); }
+        try
+        {
+            await Api.CreateAsync(MachineCode, CreateForm);
+            ActivityLog.LogAdd(
+                $"Mapping ajouté",
+                "Machine Tags",
+                $"Characteristic: {CreateForm.CharacteristicCode} sur {MachineCode}");
+            CreateForm = null;
+            await Load();
+        }
         catch (Exception ex) { Error = ex.Message; }
     }
 
     private async Task SaveUpdate()
     {
         if (UpdateForm is null) return;
-        try { await Api.UpdateAsync(EditId, UpdateForm); UpdateForm = null; EditId = 0; await Load(); }
+        try
+        {
+            await Api.UpdateAsync(EditId, UpdateForm);
+            ActivityLog.LogModify(
+                $"Mapping #{EditId} modifié",
+                "Machine Tags",
+                $"Mise à jour sur {MachineCode}");
+            UpdateForm = null;
+            EditId = 0;
+            await Load();
+        }
         catch (Exception ex) { Error = ex.Message; }
     }
 
     private void Cancel() { CreateForm = null; UpdateForm = null; EditId = 0; }
     private void Back() => Nav.NavigateTo("/admin/machines");
 }
+

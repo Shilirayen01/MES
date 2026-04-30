@@ -1,3 +1,7 @@
+@using mes_opc_ui.Services
+@inject LocalizationService Loc
+@implements IDisposable
+
 <Router AppAssembly="@typeof(Program).Assembly">
     <Found Context="routeData">
         <RouteView RouteData="@routeData" DefaultLayout="@typeof(Shared.MainLayout)" />
@@ -8,3 +12,19 @@
         </LayoutView>
     </NotFound>
 </Router>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Loc.OnLanguageChanged += Refresh;
+            await Loc.InitAsync();
+            StateHasChanged();
+        }
+    }
+
+    public void Dispose() => Loc.OnLanguageChanged -= Refresh;
+
+    private void Refresh() => InvokeAsync(StateHasChanged);
+}

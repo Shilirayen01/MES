@@ -1,0 +1,15 @@
+# ============================================================
+# Image Runtime uniquement (aspnet:8.0 déjà présent en local)
+# Pré-requis : avoir lancé depuis la racine du projet :
+#   dotnet publish 03_Platform/Mes.Opc.Platform.Api/... -c Release -o ./publish/api
+# ============================================================
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+
+COPY publish/api ./
+
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+
+ENTRYPOINT ["dotnet", "Mes.Opc.Platform.Api.dll"]

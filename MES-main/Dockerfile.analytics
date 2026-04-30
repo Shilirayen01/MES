@@ -1,0 +1,13 @@
+# ============================================================
+# Image Runtime uniquement (aspnet:8.0 déjà présent en local)
+# Pré-requis : avoir lancé depuis la racine du projet :
+#   dotnet publish Mes.Opc.Platform.AnalyticsWorker/... -c Release -o ./publish/analytics
+# ============================================================
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+
+COPY publish/analytics ./
+
+ENV DOTNET_ENVIRONMENT=Production
+
+ENTRYPOINT ["dotnet", "Mes.Opc.Platform.AnalyticsWorker.dll"]

@@ -1,0 +1,16 @@
+# ============================================================
+# Image Runtime uniquement (aspnet:8.0 déjà présent en local)
+# Pré-requis : avoir lancé depuis la racine du projet :
+#   dotnet publish 03_Platform/Mes.Opc.Platform.Realtime/... -c Release -o ./publish/realtime
+# ============================================================
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+
+COPY publish/realtime ./
+
+# Configuration réseau
+EXPOSE 5002
+ENV ASPNETCORE_URLS=http://+:5002
+ENV ASPNETCORE_ENVIRONMENT=Production
+
+ENTRYPOINT ["dotnet", "Mes.Opc.Platform.Realtime.dll"]

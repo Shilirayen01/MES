@@ -1,0 +1,489 @@
+@page "/admin/activity"
+@using mes_opc_ui.Services
+@using System.Text.Json
+@using Microsoft.JSInterop
+@inject LocalizationService Loc
+@inject ActivityLogService ActivityLog
+@inject IJSRuntime JS
+@implements IDisposable
+
+<style>
+    .act-page {
+        --text-dark:  #0f172a;
+        --text-muted: #64748b;
+        --border:     #e2e8f0;
+        --white:      #ffffff;
+        --bg-soft:    #f8fafc;
+        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color: var(--text-dark);
+        padding-bottom: 40px;
+    }
+
+    /* ── Breadcrumb ── */
+    .act-breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+    }
+    .act-breadcrumb a {
+        color: #1d4ed8;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    .act-breadcrumb a:hover { text-decoration: underline; }
+    .act-breadcrumb .sep { color: #cbd5e1; font-size: 15px; }
+
+    /* ── Page header ── */
+    .act-page-header { margin-bottom: 22px; }
+    .act-page-header h3 {
+        font-size: 24px; font-weight: 800;
+        color: var(--text-dark); margin: 0 0 4px 0;
+    }
+    .act-page-header p {
+        font-size: 14px; color: var(--text-muted); margin: 0;
+    }
+
+    /* ── Filters ── */
+    .act-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+    .act-filter-btn {
+        padding: 7px 18px;
+        border: 1.5px solid var(--border);
+        background: var(--white);
+        border-radius: 24px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #334155;
+        cursor: pointer;
+        transition: all 0.18s;
+        white-space: nowrap;
+        font-family: inherit;
+    }
+    .act-filter-btn:hover {
+        border-color: #94a3b8;
+        background: var(--bg-soft);
+    }
+    .act-filter-btn.active {
+        background: #0f172a;
+        border-color: #0f172a;
+        color: var(--white);
+    }
+
+    /* ── Table Card ── */
+    .act-card {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 1px 4px rgba(15,23,42,0.04);
+    }
+
+    /* ── Table ── */
+    .act-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .act-table thead tr {
+        background: #fafaf9;
+        border-bottom: 1.5px solid var(--border);
+    }
+    .act-table th {
+        padding: 11px 16px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        text-align: start;
+    }
+    .act-table tbody tr {
+        border-bottom: 1px solid var(--border);
+        transition: background 0.12s;
+    }
+    .act-table tbody tr:last-child { border-bottom: none; }
+    .act-table tbody tr:hover { background: #f8fafc; }
+    .act-table td {
+        padding: 14px 16px;
+        vertical-align: middle;
+        font-size: 13.5px;
+    }
+
+    /* ── Event cell ── */
+    .act-event-cell {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .act-icon {
+        width: 34px; height: 34px;
+        border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .act-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .act-event-title {
+        font-size: 14px; font-weight: 600;
+        color: var(--text-dark); margin-bottom: 2px;
+    }
+    .act-event-desc {
+        font-size: 12px; color: var(--text-muted); line-height: 1.4;
+    }
+
+    /* ── Type badge ── */
+    .act-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .badge-add     { background: #eff6ff; color: #1d4ed8; }
+    .badge-modify  { background: #fffbeb; color: #92400e; }
+    .badge-delete  { background: #fef2f2; color: #dc2626; }
+    .badge-error   { background: #fef2f2; color: #dc2626; }
+    .badge-success { background: #f0fdf4; color: #15803d; }
+
+    /* ── Source cell ── */
+    .act-source {
+        font-size: 13px;
+        color: var(--text-muted);
+    }
+
+    /* ── Time cell ── */
+    .act-time {
+        font-size: 13px;
+        color: var(--text-muted);
+        white-space: nowrap;
+    }
+
+    /* ── Footer / Pagination ── */
+    .act-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+        border-top: 1px solid var(--border);
+        flex-wrap: wrap;
+        gap: 10px;
+        background: var(--bg-soft);
+    }
+    .act-count {
+        font-size: 13px;
+        color: var(--text-muted);
+    }
+    .act-pagination {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .act-page-btn {
+        width: 34px; height: 34px;
+        border: 1px solid var(--border);
+        background: var(--white);
+        border-radius: 8px;
+        font-size: 13px; font-weight: 600;
+        color: #334155;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: all 0.15s;
+        font-family: inherit;
+    }
+    .act-page-btn:hover { border-color: #94a3b8; background: var(--bg-soft); }
+    .act-page-btn.active { background: #0f172a; border-color: #0f172a; color: #fff; }
+    .act-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ── Empty state ── */
+    .act-empty {
+        padding: 40px;
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 14px;
+        font-style: italic;
+    }
+
+    @@media (max-width: 768px) {
+        .act-table th:nth-child(3),
+        .act-table td:nth-child(3) { display: none; }
+        .act-table th:nth-child(4),
+        .act-table td:nth-child(4) { display: none; }
+    }
+</style>
+
+<div class="act-page">
+
+    @* ── Breadcrumb ── *@
+    <div class="act-breadcrumb">
+        <a href="/admin">@Loc.T("page.dashboard.title")</a>
+        <span class="sep">›</span>
+        <span>@Loc.T("page.activity.title")</span>
+    </div>
+
+    @* ── Page Header ── *@
+    <div class="act-page-header">
+        <h3>@Loc.T("page.activity.title")</h3>
+        <p>@Loc.T("page.activity.history")</p>
+    </div>
+
+    @* ── Filters ── *@
+    <div class="act-filters">
+        <button class="act-filter-btn @(_activeFilter == "all" ? "active" : "")"
+                @onclick='() => SetFilter("all")'>
+            @Loc.T("page.activity.filter.all")
+        </button>
+        <button class="act-filter-btn @(_activeFilter == "Configuration" ? "active" : "")"
+                @onclick='() => SetFilter("Configuration")'>
+            @Loc.T("page.activity.filter.config")
+        </button>
+        <button class="act-filter-btn @(_activeFilter == "OPC Endpoints" ? "active" : "")"
+                @onclick='() => SetFilter("OPC Endpoints")'>
+            @Loc.T("page.activity.filter.opc")
+        </button>
+        <button class="act-filter-btn @(_activeFilter == "Machines" ? "active" : "")"
+                @onclick='() => SetFilter("Machines")'>
+            @Loc.T("page.activity.filter.machines")
+        </button>
+        <button class="act-filter-btn @(_activeFilter == "Analytics" ? "active" : "")"
+                @onclick='() => SetFilter("Analytics")'>
+            @Loc.T("page.activity.filter.analytics")
+        </button>
+        <button class="act-filter-btn @(_activeFilter == "Cycle Rules" ? "active" : "")"
+                @onclick='() => SetFilter("Cycle Rules")'>
+            Cycle Rules
+        </button>
+        <button class="act-filter-btn @(_activeFilter == "Machine Tags" ? "active" : "")"
+                @onclick='() => SetFilter("Machine Tags")'>
+            Machine Tags
+        </button>
+        <button class="act-filter-btn @(_activeFilter == "UI Dashboards" ? "active" : "")"
+                @onclick='() => SetFilter("UI Dashboards")'>
+            UI Dashboards
+        </button>
+    </div>
+
+    @* ── Table Card ── *@
+    <div class="act-card">
+        <table class="act-table">
+            <thead>
+                <tr>
+                    <th>@Loc.T("col.event")</th>
+                    <th>@Loc.T("col.source")</th>
+                    <th>@Loc.T("col.type")</th>
+                    <th>@Loc.T("col.time")</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!_items.Any())
+                {
+                    <tr>
+                        <td colspan="4">
+                            <div class="act-empty">@Loc.T("page.activity.empty")</div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var item in _items)
+                    {
+                        <tr>
+                            <td>
+                                <div class="act-event-cell">
+                                    <div class="act-icon" style="background: @GetBgColor(item.ColorCategory)">
+                                        <div class="act-dot" style="background: @GetDotColor(item.ColorCategory)"></div>
+                                    </div>
+                                    <div>
+                                        <div class="act-event-title">@item.Title</div>
+                                        @if (!string.IsNullOrEmpty(item.Description))
+                                        {
+                                            <div class="act-event-desc">@item.Description</div>
+                                        }
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="act-source">@item.Category</td>
+                            <td>
+                                <span class="act-badge @GetBadgeClass(item.EventType)">
+                                    @GetEventTypeLabel(item.EventType)
+                                </span>
+                            </td>
+                            <td class="act-time">@GetTimeElapsed(item.Timestamp)</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+
+        @* ── Footer / Pagination ── *@
+        <div class="act-footer">
+            <span class="act-count">
+                @string.Format(Loc.T("page.activity.count"), _items.Count, _total)
+            </span>
+            @if (_totalPages > 1)
+            {
+                <div class="act-pagination">
+                    <button class="act-page-btn" @onclick="PrevPage" disabled="@(_currentPage <= 1)">←</button>
+                    @for (int p = 1; p <= _totalPages; p++)
+                    {
+                        var pageNum = p;
+                        <button class="act-page-btn @(_currentPage == pageNum ? "active" : "")"
+                                @onclick="() => GoToPage(pageNum)">
+                            @pageNum
+                        </button>
+                    }
+                    <button class="act-page-btn" @onclick="NextPage" disabled="@(_currentPage >= _totalPages)">→</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private const int PageSize = 7;
+    private string _activeFilter = "all";
+    private int _currentPage = 1;
+    private int _total = 0;
+    private int _totalPages = 1;
+    private IReadOnlyList<ActivityLogEntry> _items = new List<ActivityLogEntry>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Restore from localStorage only if the memory log is empty
+        if (ActivityLog.TotalCount == 0)
+        {
+            try
+            {
+                var json = await JS.InvokeAsync<string?>("localStorage.getItem", "mes_recent_activity");
+                if (!string.IsNullOrEmpty(json))
+                {
+                    var stored = JsonSerializer.Deserialize<List<ActivityLogEntry>>(json,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (stored?.Count > 0)
+                        ActivityLog.LoadEntries(stored);
+                }
+            }
+            catch { }
+        }
+
+        ActivityLog.OnActivityLogged += Refresh;
+        LoadData();
+    }
+
+    public void Dispose()
+    {
+        ActivityLog.OnActivityLogged -= Refresh;
+    }
+
+    private void Refresh()
+    {
+        LoadData();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void LoadData()
+    {
+        string? category = _activeFilter == "all" ? null : _activeFilter;
+        ActivityEventType? typeFilter = null;
+
+        var (items, total) = ActivityLog.GetPaged(
+            page: _currentPage,
+            pageSize: PageSize,
+            category: category,
+            eventType: typeFilter);
+
+        _items = items;
+        _total = total;
+        _totalPages = (int)Math.Ceiling((double)total / PageSize);
+        if (_totalPages < 1) _totalPages = 1;
+    }
+
+    private void SetFilter(string filter)
+    {
+        _activeFilter = filter;
+        _currentPage = 1;
+        LoadData();
+        StateHasChanged();
+    }
+
+    private void GoToPage(int page)
+    {
+        _currentPage = page;
+        LoadData();
+    }
+
+    private void PrevPage()
+    {
+        if (_currentPage > 1) { _currentPage--; LoadData(); }
+    }
+
+    private void NextPage()
+    {
+        if (_currentPage < _totalPages) { _currentPage++; LoadData(); }
+    }
+
+    private string GetTimeElapsed(DateTime dt)
+    {
+        var ts = DateTime.Now - dt;
+        if (Loc.CurrentLang == "ar")
+        {
+            if (ts.TotalMinutes < 1) return "الآن";
+            if (ts.TotalMinutes < 60) return $"منذ {(int)ts.TotalMinutes} د";
+            if (ts.TotalHours < 24) return $"منذ {(int)ts.TotalHours} س";
+            return $"منذ {(int)ts.TotalDays} ي";
+        }
+        if (Loc.CurrentLang == "en")
+        {
+            if (ts.TotalMinutes < 1) return "just now";
+            if (ts.TotalMinutes < 60) return $"{(int)ts.TotalMinutes} min ago";
+            if (ts.TotalHours < 24) return $"{(int)ts.TotalHours} h ago";
+            return $"{(int)ts.TotalDays} d ago";
+        }
+        if (ts.TotalMinutes < 1) return "à l'instant";
+        if (ts.TotalMinutes < 60) return $"il y a {(int)ts.TotalMinutes} min";
+        if (ts.TotalHours < 24) return $"il y a {(int)ts.TotalHours} h";
+        return $"il y a {(int)ts.TotalDays} j";
+    }
+
+    private string GetBgColor(string cat) => cat switch
+    {
+        "yellow" => "#fef3c7",
+        "red"    => "#fee2e2",
+        "green"  => "#dcfce7",
+        _        => "#eff6ff"
+    };
+
+    private string GetDotColor(string cat) => cat switch
+    {
+        "yellow" => "#f59e0b",
+        "red"    => "#ef4444",
+        "green"  => "#10b981",
+        _        => "#1d4ed8"
+    };
+
+    private string GetBadgeClass(ActivityEventType t) => t switch
+    {
+        ActivityEventType.Add     => "badge-add",
+        ActivityEventType.Modify  => "badge-modify",
+        ActivityEventType.Delete  => "badge-delete",
+        ActivityEventType.Error   => "badge-error",
+        ActivityEventType.Success => "badge-success",
+        _                         => "badge-add"
+    };
+
+    private string GetEventTypeLabel(ActivityEventType t) => t switch
+    {
+        ActivityEventType.Add     => Loc.T("col.event_type.add"),
+        ActivityEventType.Modify  => Loc.T("col.event_type.modify"),
+        ActivityEventType.Delete  => Loc.T("col.event_type.delete"),
+        ActivityEventType.Error   => Loc.T("col.event_type.error"),
+        ActivityEventType.Success => Loc.T("col.event_type.success"),
+        _                         => ""
+    };
+}

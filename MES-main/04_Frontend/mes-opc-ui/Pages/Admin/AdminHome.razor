@@ -1,269 +1,360 @@
 @page "/admin"
 @using mes_opc_ui.Services.AdminApi
-@using Mes.Opc.Contracts.Dtos
-@inject UiAdminApiClient Api
+@using mes_opc_ui.Services
+@using System.Text.Json
+@using Microsoft.JSInterop
+@inject OpcEndpointsApiClient EndpointsApi
+@inject MachinesApiClient MachinesApi
+@inject CycleRulesApiClient CycleRulesApi
+@inject ActivityLogService ActivityLog
+@inject LocalizationService Loc
+@inject IJSRuntime JS
+@implements IDisposable
 
 <style>
-    .admin-page {
-        --white:      #ffffff;
-        --gray-50:    #f8fafc;
-        --gray-100:   #f1f5f9;
-        --gray-200:   #e2e8f0;
-        --gray-400:   #94a3b8;
-        --text-900:   #0f172a;
-        --text-400:   #1e4d7b;
+    .dashboard-page {
+        --text-dark: #0f172a;
+        --text-muted: #64748b;
+        --border: #e2e8f0;
+        --white: #ffffff;
+        
         font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        color: var(--text-900);
+        color: var(--text-dark);
+        padding-bottom: 40px;
     }
 
-    .admin-page .page-header {
-        margin-bottom: 32px;
-        padding-bottom: 20px;
-        border-bottom: 1px solid var(--gray-200);
+    .dashboard-page .page-header {
+        margin-bottom: 24px;
     }
-    .admin-page .page-header h3 {
-        font-size: 26px; font-weight: 800; color: var(--text-900);
-        letter-spacing: -0.5px; margin: 0 0 6px 0;
+    .dashboard-page .page-header h3 {
+        font-size: 26px; font-weight: 700; color: var(--text-dark);
+        margin: 0 0 6px 0;
     }
-    .admin-page .page-header p {
-        font-size: 13px; color: var(--text-400); margin: 0;
+    .dashboard-page .page-header p {
+        font-size: 15px; color: var(--text-muted); margin: 0;
     }
 
-    .admin-page .section-label {
-        font-size: 10px; font-weight: 700; color: var(--text-400);
-        text-transform: uppercase; letter-spacing: 1.4px; margin-bottom: 14px;
+    /* ── KPIs ── */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        margin-bottom: 24px;
     }
 
-    .admin-page .nav-grid {
-        display: grid; grid-template-columns: repeat(3, 1fr);
-        gap: 14px; margin-bottom: 36px;
-    }
-    @@media (max-width: 900px) { .admin-page .nav-grid { grid-template-columns: repeat(2, 1fr); } }
-    @@media (max-width: 560px) { .admin-page .nav-grid { grid-template-columns: 1fr; } }
-
-    .admin-page .nav-card {
-        display: flex; align-items: center; gap: 16px;
-        padding: 18px 16px 18px 18px;
-        background: var(--white); border: 1px solid var(--gray-200);
-        border-radius: 12px; text-decoration: none; color: var(--text-900);
-        transition: box-shadow 0.18s, transform 0.18s;
-        animation: navFadeUp 0.35s ease both;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    }
-    .admin-page .nav-card:hover {
-        box-shadow: 0 4px 18px rgba(0,0,0,0.09);
-        transform: translateY(-2px); text-decoration: none; color: var(--text-900);
+    .kpi-card {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
     }
 
-    @@keyframes navFadeUp {
-        from { opacity: 0; transform: translateY(10px); }
-        to   { opacity: 1; transform: translateY(0); }
+    .kpi-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
     }
-    .admin-page .nav-card:nth-child(1) { animation-delay: 0.04s; }
-    .admin-page .nav-card:nth-child(2) { animation-delay: 0.08s; }
-    .admin-page .nav-card:nth-child(3) { animation-delay: 0.12s; }
-    .admin-page .nav-card:nth-child(4) { animation-delay: 0.16s; }
-    .admin-page .nav-card:nth-child(5) { animation-delay: 0.20s; }
-    .admin-page .nav-card:nth-child(6) { animation-delay: 0.24s; }
 
-    .admin-page .nav-icon {
-        width: 46px; height: 46px; border-radius: 10px;
+    .kpi-text { flex: 1; min-width: 0; }
+    .kpi-val {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-dark);
+        line-height: 1.1;
+        margin-bottom: 4px;
+    }
+    .kpi-label {
+        font-size: 13px;
+        color: var(--text-muted);
+        line-height: 1.3;
+    }
+
+    /* ── Activity Block ── */
+    .activity-section {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+
+    .activity-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+    .activity-header h4 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-dark);
+    }
+    .activity-header a {
+        font-size: 13px;
+        color: #1d4ed8;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    .activity-header a:hover {
+        text-decoration: underline;
+    }
+
+    .activity-list {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .activity-item {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .activity-item:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .ai-icon {
+        width: 36px; height: 36px;
+        border-radius: 8px;
         display: flex; align-items: center; justify-content: center;
-        font-size: 20px; flex-shrink: 0; transition: transform 0.18s;
-    }
-    .admin-page .nav-card:hover .nav-icon { transform: scale(1.06); }
-    .admin-page .nav-icon { display: none; }
-
-    .admin-page .nav-card.c-blue   .nav-icon { background: #eff6ff; }
-    .admin-page .nav-card.c-cyan   .nav-icon { background: #ecfeff; }
-    .admin-page .nav-card.c-green  .nav-icon { background: #f0fdf4; }
-    .admin-page .nav-card.c-pink   .nav-icon { background: #fff1f2; }
-    .admin-page .nav-card.c-orange .nav-icon { background: #fffbeb; }
-    .admin-page .nav-card.c-violet .nav-icon { background: #f5f3ff; }
-
-    .admin-page .nav-text { flex: 1; min-width: 0; }
-    .admin-page .nav-title {
-        font-size: 14px; font-weight: 700; color: var(--text-900);
-        margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .admin-page .nav-desc {
-        font-size: 12px; color: #1e4d7b; line-height: 1.5;
+        flex-shrink: 0;
     }
 
-    .admin-page .nav-arrow {
-        font-size: 18px; color: var(--gray-200); flex-shrink: 0;
-        transition: color 0.15s, transform 0.15s;
+    .ai-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    .ai-text { flex: 1; min-width: 0; }
+    .ai-title {
+        font-size: 14px; font-weight: 600; color: var(--text-dark);
+        margin-bottom: 2px;
     }
-    .admin-page .nav-card:hover .nav-arrow {
-        color: var(--gray-400); transform: translateX(2px);
+    .ai-desc {
+        font-size: 13px; color: var(--text-muted);
     }
 
-    /* ── Modal Realtime ── */
-    .modal-backdrop {
-        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(15,23,42,0.4);
-        display: flex; align-items: center; justify-content: center;
-        z-index: 1000; animation: fadeIn 0.15s;
+    @@media (max-width: 900px) {
+        .kpi-grid { grid-template-columns: repeat(2, 1fr); }
     }
-    .modal-content {
-        background: white; border-radius: 16px; padding: 24px;
-        width: 100%; max-width: 480px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-        animation: scaleUp 0.15s;
+    @@media (max-width: 600px) {
+        .kpi-grid { grid-template-columns: 1fr; }
     }
-    .modal-content h4 { margin-top: 0; margin-bottom: 16px; color: var(--text-900); font-size: 18px; font-weight: 700; }
-    .dashboard-list { display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; margin-bottom: 16px;}
-    .dashboard-list-item {
-        display: flex; flex-direction: column; padding: 12px 16px;
-        background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 8px;
-        text-decoration: none; color: var(--text-900); transition: all 0.2s;
-    }
-    .dashboard-list-item:hover { background: #eff6ff; border-color: #bfdbfe; text-decoration: none; }
-    .dashboard-list-item strong { font-size: 14px; font-weight: 700; color: #1e40af; }
-    .dashboard-list-item span { font-size: 12px; color: var(--text-400); margin-top: 4px; }
-    .btn-close {
-        padding: 8px 16px; background: var(--gray-200); color: var(--text-900);
-        border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px;
-    }
-    .btn-close:hover { background: var(--gray-400); color: white; }
-    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @@keyframes scaleUp { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 </style>
 
-<div class="admin-page">
+<div class="dashboard-page">
 
     <div class="page-header">
-        <h3>Administration</h3>
-        <p>Gestion du catalogue OPC, des machines et des paramètres UI.</p>
+        <h3>@Loc.T("page.dashboard.title")</h3>
+        <p>@Loc.T("page.dashboard.subtitle")</p>
     </div>
 
-    <div class="section-label">Vue Opérateur</div>
-    <div class="nav-grid">
-        <a class="nav-card c-blue" @onclick="OpenRealtimeModal" style="cursor: pointer;">
-            <div class="nav-icon"></div>
-            <div class="nav-text">
-                <div class="nav-title">Realtime</div>
-                <div class="nav-desc">Consulter un dashboard de production</div>
-            </div>
-            <span class="nav-arrow">›</span>
-        </a>
-    </div>
-
-    <div class="section-label">Infrastructure OPC-UA</div>
-    <div class="nav-grid">
-        <a class="nav-card c-blue" href="/admin/opc-endpoints">
-            <div class="nav-icon"></div>
-            <div class="nav-text">
-                <div class="nav-title">OPC Endpoints</div>
-                <div class="nav-desc">Connexions OPC-UA, URLs et statuts</div>
-            </div>
-            <span class="nav-arrow">›</span>
-        </a>
-        <a class="nav-card c-cyan" href="/admin/machines">
-            <div class="nav-icon"></div>
-            <div class="nav-text">
-                <div class="nav-title">Machines</div>
-                <div class="nav-desc">Gestion des machines et tag mappings</div>
-            </div>
-            <span class="nav-arrow">›</span>
-        </a>
-        <a class="nav-card c-pink" href="/admin/cycle-rules">
-            <div class="nav-icon"></div>
-            <div class="nav-text">
-                <div class="nav-title">Cycle Rules</div>
-                <div class="nav-desc">Règles de détection des cycles de production</div>
-            </div>
-            <span class="nav-arrow">›</span>
-        </a>
-    </div>
-
-    <div class="section-label">Analytics &amp; Visualisation</div>
-    <div class="nav-grid">
-        <a class="nav-card c-green" href="/admin/analytics">
-            <div class="nav-icon"></div>
-            <div class="nav-text">
-                <div class="nav-title">Analytics KPI</div>
-                <div class="nav-desc">Définitions et items de KPIs de production</div>
-            </div>
-            <span class="nav-arrow">›</span>
-        </a>
-        <a class="nav-card c-orange" href="/admin/analytics-reports">
-            <div class="nav-icon"></div>
-            <div class="nav-text">
-                <div class="nav-title">Rapports Analytics</div>
-                <div class="nav-desc">Résultats et résumés de cycles calculés</div>
-            </div>
-            <span class="nav-arrow">›</span>
-        </a>
-        <a class="nav-card c-violet" href="/admin/ui-dashboards">
-            <div class="nav-icon"></div>
-            <div class="nav-text">
-                <div class="nav-title">UI Dashboards</div>
-                <div class="nav-desc">Zones, widgets et bindings de données</div>
-            </div>
-            <span class="nav-arrow">›</span>
-        </a>
-    </div>
-
-    @* Modal Realtime Dashboards *@
-    @if (_showRealtimeModal)
+    @if (_isLoading)
     {
-        <div class="modal-backdrop" @onclick="CloseRealtimeModal">
-            <div class="modal-content" @onclick:stopPropagation>
-                <h4>Choisir un Dashboard</h4>
-                @if (_dashboards == null)
-                {
-                    <p style="font-size: 13px; color: var(--text-400);">Chargement des dashboards...</p>
-                }
-                else if (_dashboards.Count == 0)
-                {
-                    <p style="font-size: 13px; color: var(--red);">Aucun dashboard configuré.</p>
-                }
-                else
-                {
-                    <div class="dashboard-list">
-                        @foreach (var d in _dashboards)
-                        {
-                            <a class="dashboard-list-item" href="/dashboard/@d.Id">
-                                <strong>@d.Name</strong>
-                                @if(!string.IsNullOrWhiteSpace(d.Description))
-                                {
-                                    <span>@d.Description</span>
-                                }
-                            </a>
-                        }
-                    </div>
-                }
-                <div style="text-align: right; margin-top: 16px;">
-                    <button class="btn-close" @onclick="CloseRealtimeModal">Fermer</button>
+        <div style="color:var(--text-muted); font-size:14px;">@Loc.T("common.loading")</div>
+    }
+    else
+    {
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon" style="background: #e0f2fe; color: #0284c7;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                </div>
+                <div class="kpi-text">
+                    <div class="kpi-val">@_endpointsCount</div>
+                    <div class="kpi-label">@Loc.T("page.dashboard.kpi.endpoints")</div>
+                </div>
+            </div>
+            
+            <div class="kpi-card">
+                <div class="kpi-icon" style="background: #eff6ff; color: #1d4ed8;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                </div>
+                <div class="kpi-text">
+                    <div class="kpi-val">@_machinesCount</div>
+                    <div class="kpi-label">@Loc.T("page.dashboard.kpi.machines")</div>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon" style="background: #e0f2fe; color: #0284c7;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                </div>
+                <div class="kpi-text">
+                    <div class="kpi-val">@_cycleRulesCount</div>
+                    <div class="kpi-label">@Loc.T("page.dashboard.kpi.rules")</div>
                 </div>
             </div>
         </div>
     }
 
+    <div class="activity-section">
+        <div class="activity-header">
+            <h4>@Loc.T("page.activity.title")</h4>
+            <a href="/admin/activity">@Loc.T("page.activity.view_all")</a>
+        </div>
+
+        <div class="activity-list">
+            @if (_recentLogs == null || !_recentLogs.Any())
+            {
+                <div style="color:var(--text-muted); font-size:13px; font-style:italic;">@Loc.T("page.activity.empty")</div>
+            }
+            else
+            {
+                @foreach (var log in _recentLogs)
+                {
+                    <div class="activity-item">
+                        <div class="ai-icon" style="background: @GetBgColor(log.ColorCategory)">
+                            <div class="ai-dot" style="background: @GetDotColor(log.ColorCategory)"></div>
+                        </div>
+                        <div class="ai-text">
+                            <div class="ai-title">@log.Title</div>
+                            <div class="ai-desc">@log.Category · @GetTimeElapsed(log.Timestamp)</div>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
 </div>
 
 @code {
-    private bool _showRealtimeModal = false;
-    private List<UiDashboardDto>? _dashboards;
+    private bool _isLoading = true;
+    private int _endpointsCount = 0;
+    private int _machinesCount = 0;
+    private int _cycleRulesCount = 0;
 
-    private async Task OpenRealtimeModal()
+    private List<ActivityLogEntry> _recentLogs = new();
+
+    private const string _storageKey = "mes_recent_activity";
+
+    protected override async Task OnInitializedAsync()
     {
-        _showRealtimeModal = true;
-        if (_dashboards == null)
+        // Restore from localStorage only if the memory log is empty
+        if (ActivityLog.TotalCount == 0)
         {
             try
             {
-                _dashboards = await Api.GetDashboardsAsync() ?? new();
+                var json = await JS.InvokeAsync<string?>("localStorage.getItem", _storageKey);
+                if (!string.IsNullOrEmpty(json))
+                {
+                    var stored = JsonSerializer.Deserialize<List<ActivityLogEntry>>(json,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (stored?.Count > 0)
+                    {
+                        _recentLogs = stored;
+                        ActivityLog.LoadEntries(stored);
+                    }
+                }
             }
-            catch
-            {
-                _dashboards = new();
-            }
+            catch { /* localStorage unavailable – proceed silently */ }
         }
+        else
+        {
+            _recentLogs = ActivityLog.GetRecentActivities(7).ToList();
+        }
+
+        ActivityLog.OnActivityLogged += RefreshActivities;
+        await LoadDataAsync();
     }
 
-    private void CloseRealtimeModal()
+    public void Dispose()
     {
-        _showRealtimeModal = false;
+        ActivityLog.OnActivityLogged -= RefreshActivities;
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var endpts = await EndpointsApi.GetAllAsync(isActive: true) ?? new();
+            _endpointsCount = endpts.Count;
+
+            var machines = await MachinesApi.GetAllAsync() ?? new();
+            _machinesCount = machines.Count; // Suppose that all config'd machines are counted
+
+            int activeRules = 0;
+            foreach (var m in machines)
+            {
+                var rules = await CycleRulesApi.GetAllAsync(m.MachineCode);
+                if (rules != null)
+                {
+                    activeRules += rules.Count(r => r.IsActive);
+                }
+            }
+            _cycleRulesCount = activeRules;
+        }
+        catch 
+        {
+            // fallback if api broken
+        }
+
+        RefreshActivities();
+
+        _isLoading = false;
+        StateHasChanged();
+    }
+
+    private void RefreshActivities()
+    {
+        _recentLogs = ActivityLog.GetRecentActivities(5).ToList();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string GetTimeElapsed(DateTime dt)
+    {
+        var ts = DateTime.Now - dt;
+        if (Loc.CurrentLang == "ar")
+        {
+            if (ts.TotalMinutes < 1) return "الآن";
+            if (ts.TotalMinutes < 60) return $"منذ {(int)ts.TotalMinutes} د";
+            if (ts.TotalHours < 24) return $"منذ {(int)ts.TotalHours} س";
+            return $"منذ {(int)ts.TotalDays} ي";
+        }
+        if (Loc.CurrentLang == "en")
+        {
+            if (ts.TotalMinutes < 1) return "just now";
+            if (ts.TotalMinutes < 60) return $"{(int)ts.TotalMinutes} min ago";
+            if (ts.TotalHours < 24) return $"{(int)ts.TotalHours} h ago";
+            return $"{(int)ts.TotalDays} d ago";
+        }
+        // fr (default)
+        if (ts.TotalMinutes < 1) return "à l'instant";
+        if (ts.TotalMinutes < 60) return $"il y a {(int)ts.TotalMinutes} min";
+        if (ts.TotalHours < 24) return $"il y a {(int)ts.TotalHours} h";
+        return $"il y a {(int)ts.TotalDays} j";
+    }
+
+    private string GetBgColor(string category)
+    {
+        return category switch {
+            "yellow" => "#fef3c7",
+            "red" => "#fee2e2",
+            "green" => "#dcfce7",
+            _ => "#eff6ff"
+        };
+    }
+
+    private string GetDotColor(string category)
+    {
+        return category switch {
+            "yellow" => "#f59e0b",
+            "red" => "#ef4444",
+            "green" => "#10b981",
+            _ => "#1d4ed8"
+        };
     }
 }

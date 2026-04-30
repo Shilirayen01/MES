@@ -23,5 +23,19 @@ namespace mes_opc_ui.Services
         {
             return await _http.GetFromJsonAsync<DashboardDto>($"api/ui/dashboards/{id}", ct);
         }
+
+        public async Task<List<OperatorDashboardDto>> GetDashboardListAsync(CancellationToken ct = default)
+        {
+            var items = await _http.GetFromJsonAsync<List<OperatorDashboardDto>>("api/v1/ui/dashboards", ct);
+            return items ?? new List<OperatorDashboardDto>();
+        }
+    }
+
+    public sealed record OperatorDashboardDto
+    {
+        public Guid Id { get; init; }
+        public string Name { get; init; } = "";
+        public string? Description { get; init; }
+        public bool IsDefault { get; init; }
     }
 }

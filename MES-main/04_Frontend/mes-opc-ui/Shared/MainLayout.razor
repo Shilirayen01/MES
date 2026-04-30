@@ -1,110 +1,63 @@
 @inherits LayoutComponentBase
+@using mes_opc_ui.Services
+@inject LocalizationService Loc
+@implements IDisposable
 
 <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     .app-shell {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         min-height: 100vh;
-        background: #f1f5f9;
+        background: #f8fafc; /* very light background for content */
         font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
 
-    /* ── Topbar ── */
-    .topbar {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 0 24px;
-        height: 50px;
-        background: #ffffff;
-        border-bottom: 3px solid #0f172a;
-        flex-shrink: 0;
-        position: sticky;
-        top: 0;
-        z-index: 200;
-        box-shadow: 0 1px 6px rgba(0,0,0,0.06);
-    }
-
-    .topbar .brand {
-        font-size: 15px;
-        font-weight: 800;
-        color: #0f172a;
-        letter-spacing: -0.2px;
-    }
-
-    .topbar .topbar-dot {
-        width: 4px;
-        height: 4px;
-        border-radius: 50%;
-        background: #cbd5e1;
-        flex-shrink: 0;
-    }
-
-    .topbar .subtitle {
-        font-size: 12px;
-        color: #1e4d7b;
-        font-weight: 400;
-    }
-
-    .topbar .spacer {
-        flex: 1;
-    }
-
-    .topbar .btn-admin {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        color: #64748b;
-        border-radius: 8px;
-        transition: all 0.2s;
-        text-decoration: none;
-    }
-
-    .topbar .btn-admin:hover {
-        background: #f1f5f9;
-        color: #0f172a;
-    }
-
     /* ── Content ── */
-    .content {
+    .content-wrapper {
         flex: 1;
-        padding: 28px;
-        max-width: 1380px;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        height: 100vh;
+        overflow-y: auto;
+        overflow-x: auto; /* prevents table truncation when sidebar collapses */
+    }
+
+    .content {
+        padding: 32px 40px;
+        max-width: 1400px;
         width: 100%;
         margin: 0 auto;
     }
 
     @@media (max-width: 768px) {
-        .topbar  { padding: 0 16px; }
+        .app-shell {
+            flex-direction: column;
+        }
         .content { padding: 20px 16px; }
-        .topbar .subtitle  { display: none; }
-        .topbar .topbar-dot { display: none; }
+        .content-wrapper { height: auto; overflow-y: visible; }
     }
 </style>
 
-<div class="app-shell">
+<CascadingValue Value="Loc" Name="Loc">
+    <div class="app-shell" @key="Loc.CurrentLang">
+        <NavMenu />
+        <div class="content-wrapper">
+            <main class="content">
+                @Body
+            </main>
+        </div>
+    </div>
+</CascadingValue>
 
-    <header class="topbar">
-        <div class="brand">MES OPC</div>
-        <span class="topbar-dot"></span>
-        <div class="subtitle">Realtime Production Dashboard</div>
-        <div class="spacer"></div>
-        <a href="/admin" class="btn-admin" title="Administration">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
-        </a>
-    </header>
+@code {
+    protected override void OnInitialized()
+        => Loc.OnLanguageChanged += Refresh;
 
-    <NavMenu />
+    public void Dispose()
+        => Loc.OnLanguageChanged -= Refresh;
 
-    <main class="content">
-        @Body
-    </main>
-
-</div>
+    private void Refresh() => InvokeAsync(StateHasChanged);
+}

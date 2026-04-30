@@ -1,8 +1,11 @@
 @page "/admin/ui-dashboards"
 @using mes_opc_ui.Services.AdminApi
+@using mes_opc_ui.Services
 @using Microsoft.AspNetCore.Components.Forms
 @inject UiAdminApiClient Api
 @inject NavigationManager Nav
+@inject ActivityLogService ActivityLog
+@inject LocalizationService Loc
 
 <style>
     .ud-page {
@@ -158,6 +161,41 @@
         font-family: 'JetBrains Mono', monospace; background: var(--bg-soft);
     }
 
+    /* ── Drawer ── */
+    .ud-drawer-overlay {
+        position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4);
+        z-index: 1000; backdrop-filter: blur(2px);
+        animation: udFadeIn 0.2s ease-out forwards;
+    }
+    .ud-drawer {
+        position: fixed; top: 0; right: 0; bottom: 0; width: 450px; max-width: 100vw;
+        background: var(--white); z-index: 1001;
+        box-shadow: -4px 0 24px rgba(0,0,0,0.1);
+        display: flex; flex-direction: column;
+        transform: translateX(100%);
+        animation: udSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @@keyframes udSlideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+    .ud-drawer-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 20px 24px; border-bottom: 1px solid var(--border); background: var(--bg-soft);
+    }
+    .ud-drawer-title { font-size: 16px; font-weight: 800; color: var(--text-900); display: flex; align-items: center; gap: 8px; }
+    .ud-drawer-body {
+        flex: 1; overflow-y: auto; padding: 24px;
+        display: flex; flex-direction: column; gap: 14px;
+    }
+    .ud-drawer-footer {
+        display: flex; justify-content: flex-end; gap: 10px;
+        padding: 16px 24px; border-top: 1px solid var(--border); background: var(--bg-soft);
+    }
+    .ud-drawer .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .ud-drawer .form-group label {
+        font-size: 11px; color: var(--text-navy); font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
     /* ── Modal backdrop ── */
     .ud-modal-backdrop {
         position: fixed; inset: 0;
@@ -240,25 +278,25 @@
     @* ── Page Header ── *@
     <div class="page-header">
         <div>
-            <h3>UI Dashboards</h3>
-            <p>Gestion des dashboards (défaut, création, suppression)</p>
+            <h3>@Loc.T("page.ui.title")</h3>
+            <p>@Loc.T("page.ui.subtitle")</p>
         </div>
-        <button class="ud-btn ud-btn-primary" @onclick="New">+ Nouveau</button>
+        <button class="ud-btn ud-btn-primary" @onclick="New">@Loc.T("common.new")</button>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(Error))
     {
-        <div class="ud-alert-danger">@Error</div>
+        <div class="ud-alert-danger">@(Error.Contains("Failed to fetch") ? Loc.T("common.error_fetch") : Error)</div>
     }
 
     @if (Items is null)
     {
-        <p class="loading-text">Chargement...</p>
+        <p class="loading-text">@Loc.T("common.loading")</p>
     }
     else
     {
         <div style="margin-bottom: 20px;">
-            <input type="text" class="ud-input" placeholder="Rechercher un dashboard..." @bind="_searchQuery" @bind:event="oninput" style="max-width: 300px;" />
+            <input type="text" class="ud-input" placeholder="@Loc.T("page.ui.search")" @bind="_searchQuery" @bind:event="oninput" style="max-width: 300px;" />
         </div>
         <div class="dash-grid">
             @{
@@ -298,34 +336,35 @@
         </div>
     }
 
-    @* ── Modal Create/Edit ── *@
+    @* ── Drawer Create/Edit ── *@
     @if (Form is not null)
     {
-        <div class="ud-modal-backdrop" @onclick="CloseModal">
-            <div class="ud-modal" @onclick:stopPropagation>
-                <div class="ud-modal-header">
-                    <h5 class="ud-modal-title">@(IsEdit ? "Modifier Dashboard" : "+ Créer Dashboard")</h5>
-                    <button class="ud-modal-close" @onclick="CloseModal">✕</button>
-                </div>
-                <EditForm Model="Form" OnValidSubmit="Save">
-                    <DataAnnotationsValidator />
-                    <div class="ud-modal-body">
-                        <ValidationSummary class="validation-errors" />
-                        <div class="form-group">
-                            <label>Nom</label>
-                            <InputText class="ud-input" @bind-Value="Form.Name" placeholder="Nom du dashboard" />
-                        </div>
-                        <div class="form-group">
-                            <label>Description</label>
-                            <InputText class="ud-input" @bind-Value="Form.Description" placeholder="Description (optionnel)" />
-                        </div>
-                    </div>
-                    <div class="ud-modal-footer">
-                        <button class="ud-btn ud-btn-ghost" type="button" @onclick="CloseModal">Annuler</button>
-                        <button class="ud-btn ud-btn-primary" type="submit">Enregistrer</button>
-                    </div>
-                </EditForm>
+        <div class="ud-drawer-overlay" @onclick="CloseModal"></div>
+        <div class="ud-drawer">
+            <div class="ud-drawer-header">
+                <div class="ud-drawer-title">@(IsEdit ? "Modifier Dashboard" : "+ Créer Dashboard")</div>
+                <button class="ud-modal-close" style="padding:0; display:flex;" @onclick="CloseModal">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
             </div>
+            <EditForm Model="Form" OnValidSubmit="Save" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+                <DataAnnotationsValidator />
+                <div class="ud-drawer-body">
+                    <ValidationSummary class="validation-errors" />
+                    <div class="form-group">
+                        <label>Nom</label>
+                        <InputText class="ud-input" @bind-Value="Form.Name" placeholder="Nom du dashboard" />
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <InputText class="ud-input" @bind-Value="Form.Description" placeholder="Description (optionnel)" />
+                    </div>
+                </div>
+                <div class="ud-drawer-footer">
+                    <button class="ud-btn ud-btn-ghost" type="button" @onclick="CloseModal">@Loc.T("common.cancel")</button>
+                    <button class="ud-btn ud-btn-primary" type="submit">@Loc.T("common.save")</button>
+                </div>
+            </EditForm>
         </div>
     }
 
@@ -345,7 +384,7 @@
                     <p class="delete-sub">Zones, Widgets et Bindings associés seront également supprimés.</p>
                 </div>
                 <div class="ud-modal-footer">
-                    <button class="ud-btn ud-btn-ghost" @onclick="CloseDelete">Annuler</button>
+                    <button class="ud-btn ud-btn-ghost" @onclick="CloseDelete">@Loc.T("common.cancel")</button>
                     <button class="ud-btn ud-btn-danger" @onclick="ConfirmDelete">Supprimer</button>
                 </div>
             </div>
@@ -390,9 +429,15 @@
         try
         {
             if (!IsEdit)
+            {
                 await Api.CreateDashboardAsync(Form);
+                ActivityLog.LogAdd($"Dashboard '{Form.Name}' créé", "UI Dashboards");
+            }
             else
+            {
                 await Api.UpdateDashboardAsync(EditId, new UiDashboardUpdateDto { Name = Form.Name, Description = Form.Description, IsDefault = Form.IsDefault });
+                ActivityLog.LogModify($"Dashboard '{Form.Name}' modifié", "UI Dashboards");
+            }
             CloseModal(); await Load();
         }
         catch (Exception ex) { Error = ex.Message; }
@@ -411,7 +456,14 @@
     private async Task ConfirmDelete()
     {
         if (DeleteCandidate is null) return;
-        try { await Api.DeleteDashboardAsync(DeleteCandidate.Id); DeleteCandidate = null; await Load(); }
+        try
+        {
+            var name = DeleteCandidate.Name;
+            await Api.DeleteDashboardAsync(DeleteCandidate.Id);
+            ActivityLog.LogDelete($"Dashboard '{name}' supprimé", "UI Dashboards");
+            DeleteCandidate = null;
+            await Load();
+        }
         catch (Exception ex) { Error = ex.Message; }
     }
 }

@@ -165,13 +165,39 @@ public async Task<IActionResult> DeleteDefinition(int id, CancellationToken ct)
     // ── Mapping helpers ──────────────────────────────────────────────────────
 
     private static readonly string[] _scopes = ["Run", "Last", "LookbackWindow"];
-    private static readonly string[] _aggs = ["Sum", "Average", "Min", "Max", "Last"];
+
+    // ⚠️ Mapping explicite aligné sur worker AggregationType enum:
+    // Min=1, Max=2, Avg=3, LastAsOfEnd=4, AsOfStart=5, AsOfEnd=6, Delta=7
+    private static byte? ParseAggByte(string? s) => s switch
+    {
+        "Min"               => 1,
+        "Max"               => 2,
+        "Average"           => 3,
+        "Last"              => 4,
+        "AsOfStart"         => 5,
+        "AsOfEnd"           => 6,
+        "Delta"             => 7,
+        "TimeWeightedAvg"   => 8,
+        "PercentInRange"    => 9,
+        _                   => null
+    };
+
+    private static string? AggByteToName(byte? b) => b switch
+    {
+        1 => "Min",
+        2 => "Max",
+        3 => "Average",
+        4 => "Last",
+        5 => "AsOfStart",
+        6 => "AsOfEnd",
+        7 => "Delta",
+        8 => "TimeWeightedAvg",
+        9 => "PercentInRange",
+        _ => null
+    };
 
     private static byte? ParseScopeByte(string? s) =>
         s is null ? null : (byte?)Array.IndexOf(_scopes, s);
-
-    private static byte? ParseAggByte(string? s) =>
-        s is null ? null : (byte?)Array.IndexOf(_aggs, s);
 
     private static AnalyticsSummaryDefinitionDto ToDto(AnalyticsSummaryDefinition e) => new()
     {
@@ -190,7 +216,7 @@ public async Task<IActionResult> DeleteDefinition(int id, CancellationToken ct)
         SourceType = i.SourceType == 0 ? "Tag" : "Constant",
         TagNodeId = i.TagNodeId,
         Scope = i.Scope.HasValue && i.Scope.Value < _scopes.Length ? _scopes[i.Scope.Value] : null,
-        Aggregation = i.Aggregation.HasValue && i.Aggregation.Value < _aggs.Length ? _aggs[i.Aggregation.Value] : null,
+        Aggregation = AggByteToName(i.Aggregation),
         IsCumulative = i.IsCumulative,
         ConstantValue = i.ConstantValue,
         LookbackMinutes = i.LookbackMinutes,

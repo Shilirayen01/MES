@@ -1,18 +1,21 @@
-﻿@page "/admin/machines"
+@page "/admin/machines"
 @using mes_opc_ui.Services.AdminApi
 @using Microsoft.AspNetCore.Components.Forms
+@using mes_opc_ui.Services
 @inject MachinesApiClient MachinesApi
 @inject OpcEndpointsApiClient EndpointsApi
+@inject ActivityLogService ActivityLog
 @inject NavigationManager Nav
 
 <style>
+    /* ── CSS Variables ── */
     .mc-page {
         --white:       #ffffff;
         --bg-soft:     #f8fafc;
         --border:      #e8edf5;
         --border-soft: #f1f5f9;
-        --accent:      #1e40af;
-        --accent-dim:  rgba(30,64,175,0.07);
+        --accent:      #020495;
+        --accent-dim:  rgba(2,4,149,0.07);
         --green-bg:    #d1fae5;
         --green-txt:   #065f46;
         --green-bdr:   #a7f3d0;
@@ -20,8 +23,6 @@
         --tag-txt:     #1e40af;
         --tag-bdr:     #bfdbfe;
         --pink:        #be185d;
-        --pink-bg:     #fce7f3;
-        --orange:      #d97706;
         --orange-bg:   #fffbeb;
         --orange-bdr:  #fde68a;
         --orange-txt:  #92400e;
@@ -45,6 +46,12 @@
         color: var(--text-900); margin: 0 0 5px 0;
     }
     .mc-page .page-header p { font-size: 13px; color: var(--text-navy); margin: 0; }
+    .mc-page .total-badge {
+        display: inline-flex; align-items: center; gap: 5px;
+        background: #eff6ff; border: 1px solid #bfdbfe;
+        color: #1e40af; border-radius: 20px;
+        font-size: 12px; font-weight: 700; padding: 2px 10px;
+    }
 
     /* ── Toolbar ── */
     .mc-page .toolbar {
@@ -58,12 +65,8 @@
         padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border);
         background: var(--white); transition: all 0.15s; font-family: inherit;
     }
-    .mc-page .filter-toggle:hover {
-        color: var(--text-900); border-color: var(--accent); background: var(--accent-dim);
-    }
-    .mc-page .filter-toggle input[type="checkbox"] {
-        accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer;
-    }
+    .mc-page .filter-toggle:hover { color: var(--text-900); border-color: var(--accent); background: var(--accent-dim); }
+    .mc-page .filter-toggle input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
 
     /* ── Buttons ── */
     .mc-page .mc-btn {
@@ -72,33 +75,10 @@
         cursor: pointer; transition: all 0.15s; border: 1px solid transparent;
         font-family: inherit; line-height: 1.4;
     }
-    .mc-page .mc-btn-primary {
-        background: var(--accent); color: #fff; border-color: var(--accent);
-    }
-    .mc-page .mc-btn-primary:hover {
-        background: #1e3a8a; box-shadow: 0 4px 14px rgba(30,64,175,0.25); transform: translateY(-1px);
-    }
-    .mc-page .mc-btn-ghost {
-        background: var(--white); color: var(--text-muted); border-color: var(--border);
-    }
-    .mc-page .mc-btn-ghost:hover {
-        color: var(--text-900); border-color: #c8d2e0; background: var(--bg-soft);
-    }
-    .mc-page .mc-btn-sm { font-size: 11px; padding: 4px 10px; border-radius: 6px; }
-    .mc-page .mc-btn-outline {
-        background: var(--accent-dim); color: var(--accent); border-color: var(--tag-bdr);
-    }
-    .mc-page .mc-btn-outline:hover { background: var(--tag-bg); }
-    .mc-page .mc-btn-tag {
-        background: var(--bg-soft); color: var(--text-navy); border-color: var(--border);
-    }
-    .mc-page .mc-btn-tag:hover { background: var(--tag-bg); color: var(--accent); border-color: var(--tag-bdr); }
-    .mc-page .mc-btn-warn {
-        background: var(--orange-bg); color: var(--orange-txt); border-color: var(--orange-bdr);
-    }
-    .mc-page .mc-btn-warn:hover { background: #fef3c7; }
-
-    /* ── Alert ── */
+    .mc-page .mc-btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .mc-page .mc-btn-primary:hover { background: #010370; box-shadow: 0 4px 14px rgba(2,4,149,0.25); transform: translateY(-1px); }
+    .mc-page .mc-btn-ghost { background: var(--white); color: var(--text-muted); border-color: var(--border); }
+    .mc-page .mc-btn-ghost:hover { color: var(--text-900); border-color: #c8d2e0; background: var(--bg-soft); }
     .mc-page .mc-alert-danger {
         background: var(--red-bg); border: 1px solid var(--red-bdr);
         color: var(--red); border-radius: 10px; padding: 12px 16px;
@@ -108,108 +88,166 @@
 
     /* ── Table Card ── */
     .mc-page .table-card {
-        background: var(--white); border: 1px solid var(--border);
+        background: var(--white); border: 1px solid #c9c9c9;
         border-radius: 14px; overflow: hidden; margin-bottom: 24px;
         box-shadow: 0 1px 4px rgba(15,23,42,0.05);
     }
-    .mc-page .table-scroll { overflow-x: auto; }
-    .mc-page .mc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .mc-page .mc-table th {
-        text-align: left; padding: 10px 16px; color: var(--text-navy);
-        font-size: 11px; font-weight: 600; text-transform: uppercase;
-        letter-spacing: 0.5px; border: 1px solid #1e3a5f;
-        background: var(--bg-soft); white-space: nowrap;
-    }
-    .mc-page .mc-table td {
-        padding: 12px 16px; color: var(--text-900);
-        border: 1px solid #1e3a5f; vertical-align: middle;
-        white-space: normal; word-break: break-word;
-    }
-    .mc-page .mc-table tbody tr:hover td { background: #eff6ff; }
+    .mc-page .table-scroll { overflow-x: auto; min-height: 320px; }
+    .mc-page .mc-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 
-    .mc-page .cell-code {
-        font-family: 'JetBrains Mono', monospace; font-size: 12px;
-        font-weight: 700; color: var(--accent);
+    /* ── EWM-style HEADER — dark navy, white text, white borders ── */
+    .mc-page .mc-table thead > tr > th {
+        background-color: #020495;
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 0 !important;
+        border: 1px solid rgba(255,255,255,0.2);
+        white-space: nowrap;
+        vertical-align: middle;
     }
-    .mc-page .cell-name { font-weight: 600; color: var(--text-900); }
-    .mc-page .cell-line {
-        font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--pink);
+
+    /* ── Inline header search ── */
+    .mc-page .th-inner {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 8px 12px; min-height: 36px; gap: 6px; cursor: pointer;
     }
-    .mc-page .cell-endpoint {
-        font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-navy);
+    .mc-page .th-inner .th-label { flex: 1; }
+    .mc-page .th-inner .th-search-icon { opacity: 0.6; flex-shrink: 0; }
+    .mc-page .th-inner:hover .th-search-icon { opacity: 1; }
+
+    .mc-page .th-search-box {
+        display: flex; align-items: center;
+        background: #ffffff; border: 1.5px solid #020495;
+        border-radius: 4px; margin: 4px 8px; overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.12);
     }
+    .mc-page .th-search-box input {
+        flex: 1; border: none; outline: none; padding: 4px 8px;
+        font-size: 11px; font-weight: 700; color: #020495;
+        background: transparent; font-family: inherit;
+    }
+    .mc-page .th-search-box input::placeholder { color: #94a3b8; font-weight: 500; }
+    .mc-page .th-search-box .th-clear {
+        color: #94a3b8; padding: 0 6px; cursor: pointer; font-size: 11px;
+        display: flex; align-items: center; transition: color 0.15s;
+    }
+    .mc-page .th-search-box .th-clear:hover { color: #ef4444; }
+
+    /* ── Table BODY — gray borders ── */
+    .mc-page .mc-table tbody > tr > td {
+        padding: 8px 12px; color: #334155;
+        border: 1px solid #c9c9c9; vertical-align: middle;
+        font-size: 12px;
+    }
+    .mc-page .mc-table tbody > tr:hover > td { background-color: #f8fafc; }
+
+    /* ── Cell styles ── */
+    .mc-page .cell-code { font-family: monospace; font-size: 12px; font-weight: 700; color: #020495; }
+    .mc-page .cell-name { font-weight: 600; color: #0f172a; }
+    .mc-page .cell-line { font-family: monospace; font-size: 11px; color: #be185d; }
+    .mc-page .cell-endpoint { font-family: monospace; font-size: 11px; color: #1e4d7b; }
+
     .mc-page .badge-active {
         display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px;
-        border-radius: 6px; background: var(--green-bg); border: 1px solid var(--green-bdr);
-        color: var(--green-txt); font-size: 10px; font-weight: 700; text-transform: uppercase;
+        border-radius: 6px; background: #d1fae5; border: 1px solid #a7f3d0;
+        color: #065f46; font-size: 10px; font-weight: 700; text-transform: uppercase;
     }
     .mc-page .badge-active::before {
         content: ''; width: 5px; height: 5px; border-radius: 50%;
-        background: var(--green-txt); animation: mcPulse 2s ease infinite;
+        background: #065f46; animation: mcPulse 2s ease infinite;
     }
     .mc-page .badge-inactive {
         display: inline-flex; padding: 3px 9px; border-radius: 6px;
-        background: var(--bg-soft); border: 1px solid var(--border);
-        color: var(--text-muted); font-size: 10px; font-weight: 700; text-transform: uppercase;
+        background: #f8fafc; border: 1px solid #e8edf5;
+        color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase;
     }
     @@keyframes mcPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-    .mc-page .cell-actions { display: flex; gap: 6px; white-space: nowrap; }
 
-    /* ── Form Panel ── */
-    .mc-page .form-panel {
-        background: var(--white); border: 1px solid var(--border);
-        border-radius: 14px; overflow: hidden; margin-bottom: 24px;
-        box-shadow: 0 1px 4px rgba(15,23,42,0.05);
-        border-top: 3px solid var(--accent);
-        animation: mcFadeUp 0.25s ease;
+    /* ── SVG icon action buttons ── */
+    .mc-page .cell-actions { display: flex; gap: 6px; align-items: center; justify-content: center; }
+    .mc-page .icon-btn {
+        background: none; border: none; cursor: pointer; padding: 4px 6px;
+        color: #475569; display: flex; flex-direction: row;
+        align-items: center; gap: 5px; transition: color 0.15s;
+        font-size: 11px; font-weight: 600; font-family: inherit;
+        border-radius: 6px;
     }
-    @@keyframes mcFadeUp {
-        from { opacity: 0; transform: translateY(6px); }
-        to   { opacity: 1; transform: translateY(0); }
+    .mc-page .icon-btn:hover { color: #020495; background: #f1f5f9; }
+    .mc-page .icon-btn.danger:hover { color: #dc2626; background: #fef2f2; }
+    .mc-page .icon-btn.tag-btn:hover { color: #059669; background: #ecfdf5; }
+
+    /* ── View Settings Popover ── */
+    .mc-page .vs-popover {
+        position: absolute; top: calc(100% + 5px); right: 0;
+        background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15); width: 220px;
+        z-index: 100; color: #0f172a; text-align: left;
+        display: flex; flex-direction: column; overflow: hidden;
+        animation: vsFade 0.15s ease-out; font-family: 'DM Sans', sans-serif;
     }
-    .mc-page .form-panel-header {
+    @@keyframes vsFade { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+    .mc-page .vs-header {
+        font-size: 10px; font-weight: 800; color: #94a3b8;
+        padding: 12px 14px 8px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .mc-page .vs-body { padding: 4px 14px 12px; display: flex; flex-direction: column; gap: 8px; }
+    .mc-page .vs-check { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 500; font-family: inherit; }
+    .mc-page .vs-check input[type="checkbox"] { accent-color: #020495; width: 14px; height: 14px; cursor: pointer; }
+    .mc-page .vs-footer {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 10px 14px; background: #f8fafc; border-top: 1px solid #e2e8f0;
+    }
+    .mc-page .vs-count { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; }
+    .mc-page .vs-restore { font-size: 10px; font-weight: 800; color: #020495; cursor: pointer; background: none; border: none; text-transform: uppercase; transition: color 0.15s; font-family: inherit; padding: 0; }
+    .mc-page .vs-restore:hover { color: #010370; text-decoration: underline; }
+
+    /* ── Drawer ── */
+    .mc-drawer-overlay {
+        position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4);
+        z-index: 1000; backdrop-filter: blur(2px);
+        animation: mcFadeIn 0.2s ease-out forwards;
+    }
+    .mc-drawer {
+        position: fixed; top: 0; right: 0; bottom: 0; width: 420px; max-width: 100vw;
+        background: var(--white); z-index: 1001;
+        box-shadow: -4px 0 24px rgba(0,0,0,0.1);
+        display: flex; flex-direction: column;
+        transform: translateX(100%);
+        animation: mcSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @@keyframes mcFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @@keyframes mcSlideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+    .mc-drawer-header {
         display: flex; align-items: center; justify-content: space-between;
-        padding: 14px 20px; border-bottom: 1px solid var(--border);
-        background: var(--bg-soft);
+        padding: 20px 24px; border-bottom: 1px solid var(--border); background: var(--bg-soft);
     }
-    .mc-page .form-panel-title {
-        font-size: 14px; font-weight: 700; color: var(--text-900);
-        display: flex; align-items: center; gap: 8px;
+    .mc-drawer-title { font-size: 16px; font-weight: 800; color: var(--text-900); display: flex; align-items: center; gap: 8px; }
+    .mc-drawer-title .edit-code {
+        font-family: monospace; font-size: 12px; color: var(--accent);
+        background: var(--tag-bg); border: 1px solid var(--tag-bdr); padding: 2px 8px; border-radius: 6px;
     }
-    .mc-page .form-panel-title .edit-code {
-        font-family: 'JetBrains Mono', monospace; font-size: 12px;
-        color: var(--accent); background: var(--tag-bg);
-        border: 1px solid var(--tag-bdr); padding: 1px 7px; border-radius: 5px;
+    .mc-drawer-body {
+        flex: 1; overflow-y: auto; padding: 24px;
+        display: flex; flex-direction: column; gap: 20px;
     }
-    .mc-page .form-panel-body {
-        padding: 20px;
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-        gap: 16px;
-    }
-    .mc-page .form-group { display: flex; flex-direction: column; gap: 5px; }
-    .mc-page .form-group label {
-        font-size: 11px; color: var(--text-navy); font-weight: 600;
-        text-transform: uppercase; letter-spacing: 0.5px;
-    }
+    .mc-page .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .mc-page .form-group label { font-size: 11px; color: var(--text-navy); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
     .mc-page .mc-input, .mc-page .mc-select {
         background: var(--bg-soft); border: 1.5px solid var(--border);
         color: var(--text-900); border-radius: 8px; padding: 8px 10px;
         font-size: 13px; font-family: inherit; width: 100%; transition: border-color 0.15s;
     }
-    .mc-page .mc-input:focus, .mc-page .mc-select:focus {
-        outline: none; border-color: var(--accent);
-        box-shadow: 0 0 0 3px var(--accent-dim);
-    }
+    .mc-page .mc-input:focus, .mc-page .mc-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
     .mc-page .form-check-row { display: flex; align-items: center; gap: 8px; padding-top: 22px; }
-    .mc-page .form-check-row input[type="checkbox"] {
-        accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer;
-    }
+    .mc-page .form-check-row input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
     .mc-page .form-check-row label { font-size: 13px; color: var(--text-900); cursor: pointer; }
-    .mc-page .form-panel-footer {
-        display: flex; align-items: center; gap: 10px;
-        padding: 14px 20px; border-top: 1px solid var(--border);
-        background: var(--bg-soft);
+    .mc-drawer-footer {
+        display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+        padding: 16px 24px; border-top: 1px solid var(--border); background: var(--bg-soft);
     }
     .mc-page .validation-errors {
         background: var(--red-bg); border: 1px solid var(--red-bdr);
@@ -223,86 +261,42 @@
     @* ── Page Header ── *@
     <div class="page-header">
         <div>
-            <h3>Machines</h3>
-            <p>Gestion des machines OPC-UA (création, modification, désactivation)</p>
+            <h3>@Loc.T("page.machines.title") <span class="total-badge">@Loc.T("common.total") @(FilteredItems?.Count ?? 0)</span></h3>
+            <p>@Loc.T("page.machines.subtitle")</p>
         </div>
     </div>
 
     @* ── Toolbar ── *@
-    <div class="toolbar">
-        <button class="mc-btn mc-btn-primary" @onclick="New">+ Nouvelle Machine</button>
-        <div class="toolbar-sep"></div>
+    <div class="toolbar" style="justify-content: space-between;">
         <label class="filter-toggle">
             <input type="checkbox" @bind="ShowOnlyActive" @bind:after="Load" />
-            Afficher seulement actifs
+            @Loc.T("page.machines.active_only")
         </label>
-        <div class="toolbar-sep"></div>
-        <button class="mc-btn mc-btn-ghost" @onclick="Load">Rafraîchir</button>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <button class="mc-btn mc-btn-ghost" @onclick="Load">↻ @Loc.T("common.refresh")</button>
+            <button class="mc-btn mc-btn-primary" @onclick="New">@Loc.T("common.new")</button>
+        </div>
     </div>
 
     @if (Error is not null)
     {
-        <div class="mc-alert-danger">@Error</div>
+        <div class="mc-alert-danger">@(Error.Contains("Failed to fetch") ? Loc.T("common.error_fetch") : Error)</div>
     }
 
-    @* ── Table ── *@
-    @if (Items is null || Endpoints is null)
-    {
-        <p class="loading-text">Chargement...</p>
-    }
-    else
-    {
-        <div class="table-card">
-            <div class="table-scroll">
-                <table class="mc-table">
-                    <thead>
-                        <tr>
-                            <th>Code</th>
-                            <th>Nom</th>
-                            <th>Ligne</th>
-                            <th>Endpoint OPC</th>
-                            <th>Statut</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var m in Items)
-                        {
-                            <tr>
-                                <td><span class="cell-code">@m.MachineCode</span></td>
-                                <td><span class="cell-name">@m.Name</span></td>
-                                <td><span class="cell-line">@m.LineCode</span></td>
-                                <td><span class="cell-endpoint">@m.OpcEndpointId</span></td>
-                                <td>
-                                    @if (m.IsActive) { <span class="badge-active">Actif</span> }
-                                    else             { <span class="badge-inactive">Inactif</span> }
-                                </td>
-                                <td>
-                                    <div class="cell-actions">
-                                        <button class="mc-btn mc-btn-outline mc-btn-sm" @onclick="() => Edit(m)">Edit</button>
-                                        <button class="mc-btn mc-btn-tag mc-btn-sm" @onclick="() => GoMappings(m)">TagMappings</button>
-                                        <button class="mc-btn mc-btn-warn mc-btn-sm" @onclick="() => Deactivate(m)">Désactiver</button>
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    }
-
-    @* ── Form: Créer ── *@
+    @* ── Form: Créer (Drawer) ── *@
     @if (FormCreate is not null)
     {
-        <div class="form-panel">
-            <div class="form-panel-header">
-                <div class="form-panel-title">+ Créer Machine</div>
-                <button class="mc-btn mc-btn-ghost mc-btn-sm" @onclick="Cancel">Fermer</button>
+        <div class="mc-drawer-overlay" @onclick="Cancel"></div>
+        <div class="mc-drawer">
+            <div class="mc-drawer-header">
+                <div class="mc-drawer-title">+ Créer Machine</div>
+                <button class="icon-btn" style="padding:0;" @onclick="Cancel">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
             </div>
-            <EditForm Model="FormCreate" OnValidSubmit="SaveCreate">
+            <EditForm Model="FormCreate" OnValidSubmit="SaveCreate" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
                 <DataAnnotationsValidator />
-                <div class="form-panel-body">
+                <div class="mc-drawer-body">
                     <ValidationSummary class="validation-errors" />
                     <div class="form-group">
                         <label>Machine Code</label>
@@ -330,28 +324,193 @@
                         <label for="createActive">Machine active</label>
                     </div>
                 </div>
-                <div class="form-panel-footer">
-                    <button type="submit" class="mc-btn mc-btn-primary">Enregistrer</button>
+                <div class="mc-drawer-footer">
                     <button type="button" class="mc-btn mc-btn-ghost" @onclick="Cancel">Annuler</button>
+                    <button type="submit" class="mc-btn mc-btn-primary">Enregistrer</button>
                 </div>
             </EditForm>
         </div>
     }
 
-    @* ── Form: Modifier ── *@
+    @* ── Table ── *@
+    @if (Items is null || Endpoints is null)
+    {
+        <p class="loading-text">Chargement...</p>
+    }
+    else
+    {
+        <div class="table-card">
+            <div class="table-scroll">
+                <table class="mc-table">
+                    <thead>
+                        <tr>
+                            @* ── CODE column with inline search ── *@
+                            @if (ShowColCode)
+                            {
+                                <th>
+                                    @if (ShowSearchCode || SearchCode.Length > 0)
+                                    {
+                                        <div class="th-search-box">
+                                            <input placeholder="Code..." @bind-value="SearchCode" @bind-value:event="oninput" autofocus />
+                                            <span class="th-clear" @onclick='() => { SearchCode = string.Empty; ShowSearchCode = false; }'>✕</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="th-inner" @onclick='() => ShowSearchCode = true'>
+                                            <span class="th-label">@Loc.T("col.machine_code")</span>
+                                            <svg class="th-search-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                        </div>
+                                    }
+                                </th>
+                            }
+                            @* ── NOM column ── *@
+                            @if (ShowColNom)
+                            {
+                                <th>
+                                    @if (ShowSearchNom || SearchNom.Length > 0)
+                                    {
+                                        <div class="th-search-box">
+                                            <input placeholder="Nom..." @bind-value="SearchNom" @bind-value:event="oninput" autofocus />
+                                            <span class="th-clear" @onclick='() => { SearchNom = string.Empty; ShowSearchNom = false; }'>✕</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="th-inner" @onclick='() => ShowSearchNom = true'>
+                                            <span class="th-label">@Loc.T("col.name")</span>
+                                            <svg class="th-search-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                        </div>
+                                    }
+                                </th>
+                            }
+                            @* ── LIGNE column ── *@
+                            @if (ShowColLigne)
+                            {
+                                <th>
+                                    @if (ShowSearchLigne || SearchLigne.Length > 0)
+                                    {
+                                        <div class="th-search-box">
+                                            <input placeholder="Ligne..." @bind-value="SearchLigne" @bind-value:event="oninput" autofocus />
+                                            <span class="th-clear" @onclick='() => { SearchLigne = string.Empty; ShowSearchLigne = false; }'>✕</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="th-inner" @onclick='() => ShowSearchLigne = true'>
+                                            <span class="th-label">@Loc.T("col.line")</span>
+                                            <svg class="th-search-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                        </div>
+                                    }
+                                </th>
+                            }
+                            @* ── ENDPOINT OPC column ── *@
+                            @if (ShowColEndpoint)
+                            {
+                                <th>
+                                    @if (ShowSearchEndpoint || SearchEndpoint.Length > 0)
+                                    {
+                                        <div class="th-search-box">
+                                            <input placeholder="Endpoint..." @bind-value="SearchEndpoint" @bind-value:event="oninput" autofocus />
+                                            <span class="th-clear" @onclick='() => { SearchEndpoint = string.Empty; ShowSearchEndpoint = false; }'>✕</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="th-inner" @onclick='() => ShowSearchEndpoint = true'>
+                                            <span class="th-label">@Loc.T("page.endpoints.title")</span>
+                                            <svg class="th-search-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                        </div>
+                                    }
+                                </th>
+                            }
+                            @if (ShowColStatut) { <th><div class="th-inner"><span class="th-label">@Loc.T("common.status")</span></div></th> }
+                            <th style="position: relative;">
+                                <div class="th-inner" style="justify-content: space-between;">
+                                    <span class="th-label">@Loc.T("common.actions")</span>
+                                    <svg @onclick="() => ShowViewSettings = !ShowViewSettings" style="cursor: pointer; opacity: 0.8;" xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                    </svg>
+                                </div>
+                                @if (ShowViewSettings)
+                                {
+                                    <div class="vs-popover" @onclick:stopPropagation>
+                                        <div class="vs-header">VIEW SETTINGS</div>
+                                        <div class="vs-body">
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColCode" /> Code</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColNom" /> Nom</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColLigne" /> Ligne</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColEndpoint" /> Endpoint OPC</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColStatut" /> Statut</label>
+                                        </div>
+                                        <div class="vs-footer">
+                                            <span class="vs-count">@ActiveColsCount / 5 ACTIVE</span>
+                                            <button class="vs-restore" @onclick="RestoreColumns">RESTORE</button>
+                                        </div>
+                                    </div>
+                                }
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var m in FilteredItems ?? [])
+                        {
+                            <tr>
+                                @if (ShowColCode) { <td><span class="cell-code">@m.MachineCode</span></td> }
+                                @if (ShowColNom) { <td><span class="cell-name">@m.Name</span></td> }
+                                @if (ShowColLigne) { <td><span class="cell-line">@m.LineCode</span></td> }
+                                @if (ShowColEndpoint) { <td><span class="cell-endpoint">@m.OpcEndpointId</span></td> }
+                                @if (ShowColStatut)
+                                {
+                                    <td>
+                                        @if (m.IsActive) { <span class="badge-active">@Loc.T("common.active")</span> }
+                                        else             { <span class="badge-inactive">@Loc.T("common.inactive")</span> }
+                                    </td>
+                                }
+                                <td>
+                                    <div class="cell-actions">
+                                        <button class="icon-btn" title="Edit" @onclick="() => Edit(m)">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                            Edit
+                                        </button>
+                                        <button class="icon-btn tag-btn" title="Tag Mappings" @onclick="() => GoMappings(m)">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                                            Mappings
+                                        </button>
+                                        <button class="icon-btn danger" title="Désactiver" @onclick="() => Deactivate(m)">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                            Désactiver
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+
+
+    @* ── Form: Modifier (Drawer) ── *@
     @if (FormUpdate is not null)
     {
-        <div class="form-panel">
-            <div class="form-panel-header">
-                <div class="form-panel-title">
+        <div class="mc-drawer-overlay" @onclick="Cancel"></div>
+        <div class="mc-drawer">
+            <div class="mc-drawer-header">
+                <div class="mc-drawer-title">
                     Modifier Machine
                     <span class="edit-code">@EditCode</span>
                 </div>
-                <button class="mc-btn mc-btn-ghost mc-btn-sm" @onclick="Cancel">Fermer</button>
+                <button class="icon-btn" style="padding:0;" @onclick="Cancel">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
             </div>
-            <EditForm Model="FormUpdate" OnValidSubmit="SaveUpdate">
+            <EditForm Model="FormUpdate" OnValidSubmit="SaveUpdate" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
                 <DataAnnotationsValidator />
-                <div class="form-panel-body">
+                <div class="mc-drawer-body">
                     <ValidationSummary class="validation-errors" />
                     <div class="form-group">
                         <label>Nom</label>
@@ -375,9 +534,9 @@
                         <label for="updateActive">Machine active</label>
                     </div>
                 </div>
-                <div class="form-panel-footer">
-                    <button type="submit" class="mc-btn mc-btn-primary">Enregistrer</button>
+                <div class="mc-drawer-footer">
                     <button type="button" class="mc-btn mc-btn-ghost" @onclick="Cancel">Annuler</button>
+                    <button type="submit" class="mc-btn mc-btn-primary">Enregistrer</button>
                 </div>
             </EditForm>
         </div>
@@ -385,11 +544,46 @@
 
 </div>
 
+
 @code {
     private List<MachineDto>? Items;
     private List<OpcEndpointDto>? Endpoints;
     private string? Error;
     private bool ShowOnlyActive = true;
+
+    // Search filters
+    private bool ShowSearchCode = false;
+    private string SearchCode = "";
+    private bool ShowSearchNom = false;
+    private string SearchNom = "";
+    private bool ShowSearchLigne = false;
+    private string SearchLigne = "";
+    private bool ShowSearchEndpoint = false;
+    private string SearchEndpoint = "";
+
+    // View Settings Variables
+    private bool ShowViewSettings = false;
+    private bool ShowColCode = true;
+    private bool ShowColNom = true;
+    private bool ShowColLigne = true;
+    private bool ShowColEndpoint = true;
+    private bool ShowColStatut = true;
+
+    private int ActiveColsCount => (ShowColCode ? 1 : 0) + (ShowColNom ? 1 : 0) + (ShowColLigne ? 1 : 0) + (ShowColEndpoint ? 1 : 0) + (ShowColStatut ? 1 : 0);
+
+    private void RestoreColumns()
+    {
+        ShowColCode = true; ShowColNom = true; ShowColLigne = true;
+        ShowColEndpoint = true; ShowColStatut = true;
+    }
+
+    // Computed filtered list
+    private List<MachineDto>? FilteredItems => Items?.Where(m =>
+        (string.IsNullOrWhiteSpace(SearchCode) || (m.MachineCode?.Contains(SearchCode.Trim(), StringComparison.OrdinalIgnoreCase) ?? false)) &&
+        (string.IsNullOrWhiteSpace(SearchNom) || (m.Name?.Contains(SearchNom.Trim(), StringComparison.OrdinalIgnoreCase) ?? false)) &&
+        (string.IsNullOrWhiteSpace(SearchLigne) || (m.LineCode?.Contains(SearchLigne.Trim(), StringComparison.OrdinalIgnoreCase) ?? false)) &&
+        (string.IsNullOrWhiteSpace(SearchEndpoint) || m.OpcEndpointId.ToString().Contains(SearchEndpoint.Trim(), StringComparison.OrdinalIgnoreCase))
+    ).ToList();
 
     private MachineCreateDto? FormCreate;
     private MachineUpdateDto? FormUpdate;
@@ -442,20 +636,47 @@
     private async Task SaveCreate()
     {
         if (FormCreate is null) return;
-        try { await MachinesApi.CreateAsync(FormCreate); FormCreate = null; await Load(); }
+        try 
+        { 
+            await MachinesApi.CreateAsync(FormCreate); 
+            ActivityLog.LogAdd(
+                $"Machine {FormCreate.MachineCode} ajoutée",
+                "Machines",
+                $"Nouvelle machine '{FormCreate.Name}' configurée sur l'endpoint #{FormCreate.OpcEndpointId}");
+            FormCreate = null; 
+            await Load(); 
+        }
         catch (Exception ex) { Error = ex.Message; }
     }
 
     private async Task SaveUpdate()
     {
         if (FormUpdate is null) return;
-        try { await MachinesApi.UpdateAsync(EditCode, FormUpdate); FormUpdate = null; EditCode = ""; await Load(); }
+        try 
+        { 
+            await MachinesApi.UpdateAsync(EditCode, FormUpdate); 
+            ActivityLog.LogModify(
+                $"Machine {EditCode} modifiée",
+                "Machines",
+                $"Configuration mise à jour : {FormUpdate.Name}");
+            FormUpdate = null; 
+            EditCode = ""; 
+            await Load(); 
+        }
         catch (Exception ex) { Error = ex.Message; }
     }
 
     private async Task Deactivate(MachineDto m)
     {
-        try { await MachinesApi.DeleteAsync(m.MachineCode); await Load(); }
+        try 
+        { 
+            await MachinesApi.DeleteAsync(m.MachineCode); 
+            ActivityLog.LogDelete(
+                $"Machine {m.MachineCode} supprimée",
+                "Machines",
+                $"Machine '{m.Name}' retirée du catalogue");
+            await Load(); 
+        }
         catch (Exception ex) { Error = ex.Message; }
     }
 

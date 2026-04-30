@@ -4,7 +4,6 @@
 @inject AnalyticsApiClient AnalyticsApi
 @inject MachinesApiClient MachinesApi
 @inject ActivityLogService ActivityLog
-@inject LocalizationService Loc
 
 <style>
     .analytics-page {
@@ -232,49 +231,35 @@
     }
     .analytics-page .detail-card-body { padding: 16px; }
 
-    /* ── Items List (card style) ── */
-    .analytics-page .items-toolbar {
-        display: flex; align-items: center; gap: 10px;
-        padding: 12px 16px; border-bottom: 1px solid var(--border-soft);
+    /* ── Items Table ── */
+    .analytics-page .items-count { font-size: 12px; color: var(--text-muted); }
+    .analytics-page .items-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .analytics-page .items-table th {
+        text-align: left; padding: 8px 12px;
         background: var(--bg-elevated);
+        color: var(--text-navy); font-weight: 600;
+        font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+        border-bottom: 1px solid var(--border);
     }
-    .analytics-page .items-search {
-        flex: 1; padding: 6px 10px;
-        background: var(--white); border: 1.5px solid var(--border);
-        border-radius: 8px; font-size: 12.5px; font-family: inherit;
-        color: var(--text-900); transition: border-color 0.15s;
+    .analytics-page .items-table td {
+        padding: 10px 12px; color: var(--text-600);
+        border-bottom: 1px solid var(--border-soft); vertical-align: middle;
     }
-    .analytics-page .items-search:focus { outline: none; border-color: var(--accent); }
-    .analytics-page .items-search-count {
-        font-size: 12px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0;
+    .analytics-page .items-table tr:last-child td { border-bottom: none; }
+    .analytics-page .items-table tr:hover td { background: #f0f7ff; }
+    .analytics-page .node-id {
+        font-family: 'JetBrains Mono', monospace; font-size: 10px;
+        color: var(--text-muted); display: block;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;
     }
-    .analytics-page .item-row {
-        display: flex; align-items: center; gap: 12px;
-        padding: 12px 16px; border-bottom: 1px solid var(--border-soft);
-        transition: background 0.12s;
-    }
-    .analytics-page .item-row:last-child { border-bottom: none; }
-    .analytics-page .item-row:hover { background: #f7faff; }
-    .analytics-page .item-row.editing { background: var(--accent-dim); border-left: 3px solid var(--accent); }
-    .analytics-page .item-name {
-        font-family: 'JetBrains Mono', monospace; font-size: 13px;
-        font-weight: 700; color: var(--text-900);
-        min-width: 140px; flex-shrink: 0;
-    }
-    .analytics-page .item-pills { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
-    .analytics-page .item-nodeid {
-        font-family: 'JetBrains Mono', monospace; font-size: 11px;
-        color: var(--text-muted); white-space: nowrap;
-        overflow: hidden; text-overflow: ellipsis; max-width: 130px; flex-shrink: 0;
-    }
-    .analytics-page .item-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
-    .analytics-page .no-items { font-size: 13px; color: var(--text-muted); padding: 24px; text-align: center; }
     .analytics-page .tag-pill {
         display: inline-flex; align-items: center;
         padding: 2px 8px; border-radius: 5px;
         background: var(--tag-bg); border: 1px solid var(--tag-bdr);
         color: var(--tag-txt); font-size: 11px; font-weight: 600;
+        margin-right: 3px;
     }
+    .analytics-page .no-items { font-size: 13px; color: var(--text-muted); padding: 20px; text-align: center; }
 
     /* ── Buttons ── */
     .analytics-page .ak-btn {
@@ -301,14 +286,6 @@
         font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.12s;
     }
     .analytics-page .ak-btn-del:hover { background: var(--red-dim); }
-    .analytics-page .ak-icon-btn {
-        background: none; border: none; cursor: pointer; padding: 5px 7px;
-        color: #475569; display: inline-flex; align-items: center; justify-content: center;
-        border-radius: 6px; transition: all 0.15s;
-    }
-    .analytics-page .ak-icon-btn:hover { color: var(--accent); background: var(--accent-dim); }
-    .analytics-page .ak-icon-btn-del { color: var(--red); }
-    .analytics-page .ak-icon-btn-del:hover { color: var(--red); background: var(--red-dim); }
     .analytics-page .ak-btn-edit-sm {
         background: var(--bg-elevated); color: var(--text-navy);
         border: 1px solid var(--border);
@@ -355,42 +332,7 @@
     .analytics-page .form-check-row { display: flex; align-items: center; gap: 8px; padding-top: 22px; }
     .analytics-page .form-check-row input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); }
     .analytics-page .form-check-row label { font-size: 13px; color: var(--text-600); cursor: pointer; }
-    .analytics-page .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
-
-    /* ── Drawer ── */
-    .ak-drawer-overlay {
-        position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4);
-        z-index: 1000; backdrop-filter: blur(2px);
-        animation: akFadeIn 0.2s ease-out forwards;
-    }
-    .ak-drawer {
-        position: fixed; top: 0; right: 0; bottom: 0; width: 450px; max-width: 100vw;
-        background: var(--white); z-index: 1001;
-        box-shadow: -4px 0 24px rgba(0,0,0,0.1);
-        display: flex; flex-direction: column;
-        transform: translateX(100%);
-        animation: akSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-    @@keyframes akFadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @@keyframes akSlideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
-
-    .ak-drawer-header {
-        display: flex; align-items: center; justify-content: space-between;
-        padding: 20px 24px; border-bottom: 1px solid var(--border); background: var(--bg-elevated);
-    }
-    .ak-drawer-title { font-size: 16px; font-weight: 800; color: var(--text-900); display: flex; align-items: center; gap: 8px; }
-    .ak-drawer-body {
-        flex: 1; overflow-y: auto; padding: 24px;
-        display: flex; flex-direction: column; gap: 14px;
-    }
-    .ak-drawer-footer {
-        display: flex; justify-content: flex-end; gap: 10px;
-        padding: 16px 24px; border-top: 1px solid var(--border); background: var(--bg-elevated);
-    }
-    .ak-drawer .form-group label {
-        font-size: 11px; color: var(--text-navy); font-weight: 600;
-        text-transform: uppercase; letter-spacing: 0.5px;
-    }
+    .analytics-page .form-actions { display: flex; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
 
     /* ── Alert ── */
     .analytics-page .ak-alert {
@@ -400,23 +342,9 @@
 
     @@keyframes akPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     @@keyframes akFadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-    .analytics-page .page-header-bar {
-        margin-bottom: 20px;
-    }
-    .analytics-page .page-title {
-        font-size: 24px; font-weight: 800; color: var(--text-900); margin: 0 0 4px; letter-spacing: -0.4px;
-    }
-    .analytics-page .page-subtitle {
-        font-size: 14px; color: var(--text-muted); margin: 0;
-    }
 </style>
 
 <div class="analytics-page">
-
-    <div class="page-header-bar">
-        <h2 class="page-title">@Loc.T("sidebar.kpis")</h2>
-        <p class="page-subtitle">@Loc.T("page.analytics.subtitle")</p>
-    </div>
 
     @if (_error is not null)
     {
@@ -429,23 +357,23 @@
         <div class="md-left">
             <div class="md-left-header">
                 <div class="md-left-title">
-                    @Loc.T("analytics.definitions")
+                    Définitions
                     @if (_defs is not null)
                     {
                         <span class="count">(@_defs.Count)</span>
                     }
                 </div>
-                <button class="ak-btn ak-btn-primary" @onclick="NewDefinition">@Loc.T("analytics.new_def")</button>
+                <button class="ak-btn ak-btn-primary" @onclick="NewDefinition">+ Nouvelle</button>
             </div>
 
             <div class="md-search">
-                <input class="md-search-input" placeholder="@Loc.T("analytics.search_def")" @bind="_search" @bind:event="oninput" />
+                <input class="md-search-input" placeholder="Rechercher..." @bind="_search" @bind:event="oninput" />
             </div>
 
             <div class="md-list">
                 @if (_defs is null)
                 {
-                    <p style="font-size:13px;color:var(--text-muted);padding:12px">@Loc.T("common.loading")</p>
+                    <p style="font-size:13px;color:var(--text-muted);padding:12px">Chargement...</p>
                 }
                 else
                 {
@@ -456,8 +384,8 @@
                         <div class="md-list-item @(isActive ? "active" : "")" @onclick="() => SelectDefinition(d)">
                             <div class="md-item-top">
                                 <span class="md-item-name">@d.Name</span>
-                                @if (d.IsActive) { <span class="badge-actif">@Loc.T("common.active")</span> }
-                                else             { <span class="badge-inactif">@Loc.T("common.inactive")</span> }
+                                @if (d.IsActive) { <span class="badge-actif">Actif</span> }
+                                else             { <span class="badge-inactif">Inactif</span> }
                             </div>
                             <div class="md-item-meta">
                                 <span class="md-dot @(d.IsActive ? "active" : "")"></span>
@@ -471,7 +399,7 @@
                                 }
                                 else
                                 {
-                                    <span>@Loc.T("analytics.all_machines")</span>
+                                    <span>Toutes machines</span>
                                 }
                                 <span style="margin-left:auto">@d.Items.Count item@(d.Items.Count != 1 ? "s" : "")</span>
                             </div>
@@ -495,44 +423,51 @@
                 <div class="md-right-body">
                     <div class="md-empty">
                         <div class="md-empty-icon">+</div>
-                        <p>@Loc.T("analytics.select_or_new")</p>
+                        <p>Sélectionnez une définition ou créez-en une nouvelle</p>
                     </div>
                 </div>
             }
             else if (_defForm is not null)
             {
-                @* ── New Definition Form (Drawer) ── *@
-                <div class="ak-drawer-overlay" @onclick="() => _defForm = null"></div>
-                <div class="ak-drawer">
-                    <div class="ak-drawer-header">
-                        <div class="ak-drawer-title">@Loc.T("analytics.new_def_title")</div>
-                        <button class="ak-icon-btn" style="padding:4px; margin:0;" @onclick="() => _defForm = null">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                        </button>
-                    </div>
-                    <div class="ak-drawer-body">
-                        <div class="form-group">
-                            <label>@Loc.T("analytics.def_name")</label>
-                            <input class="ak-input" @bind="_defForm.Name" placeholder="RunSummary_MC_01" />
+                @* ── New Definition Form ── *@
+                <div class="md-right-header">
+                    <div class="md-right-title">Nouvelle Définition</div>
+                    <button class="ak-btn ak-btn-ghost" @onclick="() => _defForm = null">Annuler</button>
+                </div>
+                <div class="md-right-body">
+                    <div class="detail-card">
+                        <div class="detail-card-header">
+                            <span class="detail-card-title">Informations</span>
                         </div>
-                        <div class="form-group">
-                            <label>@Loc.T("analytics.machine_opt")</label>
-                            <select class="ak-select" @bind="_defForm.AppliesToMachineCode">
-                                <option value="">@Loc.T("analytics.all_machines_opt")</option>
-                                @foreach (var m in _machines)
-                                {
-                                    <option value="@m.MachineCode">@m.MachineCode — @m.Name</option>
-                                }
-                            </select>
+                        <div class="detail-card-body">
+                            <div class="form-row">
+                                <div class="form-group" style="flex:2;min-width:200px">
+                                    <label>Nom de la définition</label>
+                                    <input class="ak-input" @bind="_defForm.Name" placeholder="RunSummary_MC_01" />
+                                </div>
+                                <div class="form-group" style="flex:2;min-width:180px">
+                                    <label>Machine (optionnel)</label>
+                                    <select class="ak-select" @bind="_defForm.AppliesToMachineCode">
+                                        <option value="">-- Toutes les machines --</option>
+                                        @foreach (var m in _machines)
+                                        {
+                                            <option value="@m.MachineCode">@m.MachineCode — @m.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="form-group" style="flex:0;min-width:80px">
+                                    <label>&nbsp;</label>
+                                    <div class="form-check-row">
+                                        <input type="checkbox" id="defActive" @bind="_defForm.IsActive" />
+                                        <label for="defActive">Actif</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button class="ak-btn ak-btn-primary" @onclick="SaveDef">Enregistrer</button>
+                                <button class="ak-btn ak-btn-ghost" @onclick="() => _defForm = null">Annuler</button>
+                            </div>
                         </div>
-                        <div class="form-check-row" style="padding-top:10px;">
-                            <input type="checkbox" id="defActive" @bind="_defForm.IsActive" />
-                            <label for="defActive">@Loc.T("common.active")</label>
-                        </div>
-                    </div>
-                    <div class="ak-drawer-footer">
-                        <button class="ak-btn ak-btn-ghost" @onclick="() => _defForm = null">@Loc.T("common.cancel")</button>
-                        <button class="ak-btn ak-btn-primary" @onclick="SaveDef">@Loc.T("common.save")</button>
                     </div>
                 </div>
             }
@@ -549,8 +484,8 @@
                         }
                     </div>
                     <div style="display:flex;gap:8px;align-items:center">
-                        <button class="ak-btn ak-btn-ghost" @onclick="() => EditDefinition(_selectedDef)" style="font-size:12px;padding:5px 12px">@Loc.T("analytics.modify_def")</button>
-                        <button class="ak-btn-danger" @onclick="() => DeleteDef(_selectedDef)">@Loc.T("common.delete")</button>
+                        <button class="ak-btn ak-btn-ghost" @onclick="() => EditDefinition(_selectedDef)" style="font-size:12px;padding:5px 12px">✏️ Modifier</button>
+                        <button class="ak-btn-danger" @onclick="() => DeleteDef(_selectedDef)">Supprimer</button>
                     </div>
                 </div>
 
@@ -559,146 +494,138 @@
                     @* Info Card *@
                     <div class="detail-card">
                         <div class="detail-card-header">
-                            <span class="detail-card-title">@Loc.T("analytics.info")</span>
-                            @if (_selectedDef.IsActive) { <span class="badge-actif">@Loc.T("common.active")</span> }
-                            else                        { <span class="badge-inactif">@Loc.T("common.inactive")</span> }
+                            <span class="detail-card-title">Informations</span>
+                            @if (_selectedDef.IsActive) { <span class="badge-actif">Actif</span> }
+                            else                        { <span class="badge-inactif">Inactif</span> }
                         </div>
                         <div class="detail-card-body">
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label>@Loc.T("analytics.def_name")</label>
+                                    <label>Nom de la définition</label>
                                     <input class="ak-input" value="@_selectedDef.Name" disabled />
                                 </div>
                                 <div class="form-group">
-                                    <label>@Loc.T("col.machine")</label>
-                                    <input class="ak-input" value="@(string.IsNullOrEmpty(machineName2) ? Loc.T("analytics.all_machines") : $"{_selectedDef.AppliesToMachineCode} — {machineName2}")" disabled />
+                                    <label>Machine</label>
+                                    <input class="ak-input" value="@(string.IsNullOrEmpty(machineName2) ? "Toutes" : $"{_selectedDef.AppliesToMachineCode} — {machineName2}")" disabled />
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    @* Edit Definition Drawer *@
+                    @* Edit Definition Form *@
                     @if (_editDefForm is not null)
                     {
-                        <div class="ak-drawer-overlay" @onclick="() => _editDefForm = null"></div>
-                        <div class="ak-drawer">
-                            <div class="ak-drawer-header">
-                                <div class="ak-drawer-title">@Loc.T("analytics.modify_def")</div>
-                                <button class="ak-icon-btn" style="padding:4px; margin:0;" @onclick="() => _editDefForm = null">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                                </button>
+                        <div class="detail-card" style="border-top:3px solid var(--accent);margin-bottom:16px">
+                            <div class="detail-card-header">
+                                <span class="detail-card-title">Modifier la définition</span>
+                                <button class="ak-btn ak-btn-ghost" style="font-size:12px;padding:4px 10px" @onclick="() => _editDefForm = null">Annuler</button>
                             </div>
-                            <div class="ak-drawer-body">
-                                <div class="form-group">
-                                    <label>@Loc.T("analytics.def_name")</label>
-                                    <input class="ak-input" @bind="_editDefForm.Name" />
+                            <div class="detail-card-body">
+                                <div class="form-row">
+                                    <div class="form-group" style="flex:2;min-width:200px">
+                                        <label>Nom de la définition</label>
+                                        <input class="ak-input" @bind="_editDefForm.Name" />
+                                    </div>
+                                    <div class="form-group" style="flex:2;min-width:180px">
+                                        <label>Machine (optionnel)</label>
+                                        <select class="ak-select" @bind="_editDefForm.AppliesToMachineCode">
+                                            <option value="">-- Toutes les machines --</option>
+                                            @foreach (var m in _machines)
+                                            {
+                                                <option value="@m.MachineCode">@m.MachineCode — @m.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="form-group" style="flex:0;min-width:80px">
+                                        <label>&nbsp;</label>
+                                        <div class="form-check-row">
+                                            <input type="checkbox" id="editDefActive" @bind="_editDefForm.IsActive" />
+                                            <label for="editDefActive">Actif</label>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="form-group">
-                                    <label>@Loc.T("analytics.machine_opt")</label>
-                                    <select class="ak-select" @bind="_editDefForm.AppliesToMachineCode">
-                                        <option value="">@Loc.T("analytics.all_machines_opt")</option>
-                                        @foreach (var m in _machines)
-                                        {
-                                            <option value="@m.MachineCode">@m.MachineCode — @m.Name</option>
-                                        }
-                                    </select>
+                                <div class="form-actions">
+                                    <button class="ak-btn ak-btn-primary" @onclick="SaveEditDef">Enregistrer</button>
+                                    <button class="ak-btn ak-btn-ghost" @onclick="() => _editDefForm = null">Annuler</button>
                                 </div>
-                                <div class="form-check-row" style="padding-top:10px;">
-                                    <input type="checkbox" id="editDefActive" @bind="_editDefForm.IsActive" />
-                                    <label for="editDefActive">@Loc.T("common.active")</label>
-                                </div>
-                            </div>
-                            <div class="ak-drawer-footer">
-                                <button class="ak-btn ak-btn-ghost" @onclick="() => _editDefForm = null">@Loc.T("common.cancel")</button>
-                                <button class="ak-btn ak-btn-primary" @onclick="SaveEditDef">@Loc.T("common.save")</button>
                             </div>
                         </div>
                     }
 
                     @* Items Card *@
-                    @{ var filteredItems = _selectedDef.Items
-                           .Where(i => string.IsNullOrWhiteSpace(_itemSearch) ||
-                                       i.FieldName.Contains(_itemSearch, StringComparison.OrdinalIgnoreCase))
-                           .ToList(); }
                     <div class="detail-card">
-                        <div class="items-toolbar">
-                            <input class="items-search" placeholder="@Loc.T("analytics.search_item")" @bind="_itemSearch" @bind:event="oninput" />
-                            <span class="items-search-count">@filteredItems.Count item@(filteredItems.Count != 1 ? "s" : "")</span>
-                            <button class="ak-btn ak-btn-outline" @onclick="NewItem">@Loc.T("analytics.add_item")</button>
+                        <div class="detail-card-header">
+                            <div style="display:flex;align-items:center;gap:8px">
+                                <span class="detail-card-title">Items configurés</span>
+                                <span class="items-count">@_selectedDef.Items.Count item@(_selectedDef.Items.Count != 1 ? "s" : "")</span>
+                            </div>
+                            <button class="ak-btn ak-btn-outline" @onclick="NewItem">+ Ajouter un item</button>
                         </div>
-                        <div>
+                        <div style="padding:0">
                             @if (_selectedDef.Items.Count == 0)
                             {
-                                <p class="no-items">@Loc.T("analytics.no_items")</p>
-                            }
-                            else if (filteredItems.Count == 0)
-                            {
-                                <p class="no-items">@Loc.T("analytics.no_items_search")</p>
+                                <p class="no-items">Aucun item configuré pour cette définition.</p>
                             }
                             else
                             {
-                                @foreach (var it in filteredItems)
-                                {
-                                    <div class="item-row @(_editItemId == it.ItemId ? "editing" : "")">
-                                        <span class="item-name">@it.FieldName</span>
-                                        <div class="item-pills">
-                                            @if (!string.IsNullOrEmpty(it.Aggregation)) { <span class="tag-pill">@it.Aggregation</span> }
-                                            @if (!string.IsNullOrEmpty(it.Scope))       { <span class="tag-pill">@it.Scope</span> }
-                                            @if (!string.IsNullOrEmpty(it.SourceType))  { <span class="tag-pill">@it.SourceType</span> }
-                                            @if (!string.IsNullOrEmpty(it.Unit))        { <span class="tag-pill">@it.Unit</span> }
-                                        </div>
-                                        <span class="item-nodeid" title="@it.TagNodeId">@it.TagNodeId</span>
-                                        <div class="item-actions">
-                                            <button class="ak-icon-btn" title="@Loc.T("analytics.edit_item")" @onclick="() => EditItem(it)">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                            </button>
-                                            <button class="ak-icon-btn ak-icon-btn-del" title="@Loc.T("common.delete")" @onclick="() => DeleteItem(_selectedDef.SummaryId, it.ItemId)">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                }
+                                <table class="items-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nom du champ</th>
+                                            <th>Agrégation / Scope / Source</th>
+                                            <th>Node Id</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var it in _selectedDef.Items)
+                                        {
+                                            <tr>
+                                                <td style="font-weight:600">@it.FieldName</td>
+                                                <td>
+                                                    <span class="tag-pill">@it.Aggregation</span>
+                                                    <span class="tag-pill">@it.Scope</span>
+                                                    <span class="tag-pill">@it.SourceType</span>
+                                                    @if (!string.IsNullOrEmpty(it.Unit)) { <span class="tag-pill">@it.Unit</span> }
+                                                </td>
+                                                <td><span class="node-id">@it.TagNodeId</span></td>
+                                                <td style="text-align:right;white-space:nowrap">
+                                                    <button class="ak-btn-edit-sm" @onclick="() => EditItem(it)">Modifier</button>
+                                                    <button class="ak-btn-del" @onclick="() => DeleteItem(_selectedDef.SummaryId, it.ItemId)">×</button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
                             }
                         </div>
                     </div>
 
-                    @* Add / Edit Item Drawer *@
+                    @* Add / Edit Item Form *@
                     @if (_itemForm is not null)
                     {
-                        <div class="ak-drawer-overlay" @onclick="() => { _itemForm = null; _editItemId = null; }"></div>
-                        <div class="ak-drawer" style="width: 500px">
-                            <div class="ak-drawer-header">
-                                <div class="ak-drawer-title">
-                                    @(_editItemId.HasValue ? Loc.T("analytics.edit_item") : Loc.T("analytics.add_item_title"))
-                                </div>
-                                <button class="ak-icon-btn" style="padding:4px; margin:0;" @onclick="() => { _itemForm = null; _editItemId = null; }">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                                </button>
+                        <div class="detail-card" style="border-top:3px solid var(--accent)">
+                            <div class="detail-card-header">
+                                <span class="detail-card-title">
+                                    @(_editItemId.HasValue ? "Modifier l'item" : "Ajouter un item") —
+                                    <em style="color:var(--accent);font-style:normal">@_selectedDef.Name</em>
+                                </span>
                             </div>
-                            <div class="ak-drawer-body">
-                                <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 5px;">
-                                    Définition ciblée : <strong style="color:var(--text-900)">@_selectedDef.Name</strong>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group" style="flex: 2;">
-                                        <label>@Loc.T("analytics.field_name")</label>
-                                        <input class="ak-input" @bind="_itemForm.FieldName" placeholder="VitesseMoyenne" />
-                                    </div>
-                                    <div class="form-group" style="flex: 1;">
-                                        <label>@Loc.T("analytics.unit")</label>
-                                        <input class="ak-input" @bind="_itemForm.Unit" placeholder="m/min" />
-                                    </div>
-                                </div>
+                            <div class="detail-card-body">
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label>@Loc.T("analytics.source")</label>
+                                        <label>Nom du champ</label>
+                                        <input class="ak-input" @bind="_itemForm.FieldName" placeholder="VitesseMoyenne" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Source</label>
                                         <select class="ak-select" @bind="_itemForm.SourceType">
                                             <option>Tag</option>
                                             <option>Constant</option>
                                         </select>
                                     </div>
                                     <div class="form-group">
-                                        <label>@Loc.T("analytics.aggregation")</label>
+                                        <label>Agrégation</label>
                                         <select class="ak-select" @bind="_itemForm.Aggregation">
                                             <option>Sum</option>
                                             <option>Average</option>
@@ -707,31 +634,35 @@
                                             <option>Last</option>
                                         </select>
                                     </div>
-                                </div>
-                                <div class="form-row">
                                     <div class="form-group">
-                                        <label>@Loc.T("analytics.scope")</label>
+                                        <label>Scope</label>
                                         <select class="ak-select" @bind="_itemForm.Scope">
                                             <option>Run</option>
                                             <option>Last</option>
                                             <option>LookbackWindow</option>
                                         </select>
                                     </div>
-                                    <div class="form-group" style="flex: 1;">
-                                        <label>@Loc.T("analytics.lookback")</label>
+                                    <div class="form-group">
+                                        <label>Unité</label>
+                                        <input class="ak-input" @bind="_itemForm.Unit" placeholder="m/min" />
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group" style="flex:3">
+                                        <label>Tag Node Id</label>
+                                        <input class="ak-input font-mono" @bind="_itemForm.TagNodeId" placeholder="ns=2;i=2001" />
+                                    </div>
+                                    <div class="form-group" style="flex:1">
+                                        <label>Lookback (min)</label>
                                         <input class="ak-input" type="number" @bind="_itemForm.LookbackMinutes" />
                                     </div>
                                 </div>
-                                <div class="form-group">
-                                    <label>@Loc.T("analytics.tag_node_id")</label>
-                                    <input class="ak-input font-mono" @bind="_itemForm.TagNodeId" placeholder="ns=2;i=2001" />
+                                <div class="form-actions">
+                                    <button class="ak-btn ak-btn-primary" @onclick="SaveItem">
+                                        @(_editItemId.HasValue ? "Enregistrer" : "Ajouter")
+                                    </button>
+                                    <button class="ak-btn ak-btn-ghost" @onclick="() => { _itemForm = null; _editItemId = null; }">Annuler</button>
                                 </div>
-                            </div>
-                            <div class="ak-drawer-footer">
-                                <button class="ak-btn ak-btn-ghost" @onclick="() => { _itemForm = null; _editItemId = null; }">@Loc.T("common.cancel")</button>
-                                <button class="ak-btn ak-btn-primary" @onclick="SaveItem">
-                                    @(_editItemId.HasValue ? Loc.T("common.save") : Loc.T("common.add"))
-                                </button>
                             </div>
                         </div>
                     }
@@ -755,7 +686,6 @@
     private int? _editItemId;
     private string? _error;
     private string _search = "";
-    private string _itemSearch = "";
 
     protected override async Task OnInitializedAsync() => await Load();
 

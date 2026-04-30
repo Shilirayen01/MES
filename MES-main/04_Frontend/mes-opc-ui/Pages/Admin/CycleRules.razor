@@ -1,8 +1,10 @@
 @page "/admin/cycle-rules"
 @using mes_opc_ui.Services.AdminApi
+@using mes_opc_ui.Services
 @using Microsoft.JSInterop
 @inject MachinesApiClient MachinesApi
 @inject CycleRulesApiClient CycleRulesApi
+@inject ActivityLogService ActivityLog
 @inject IJSRuntime JS
 
 <style>
@@ -128,22 +130,54 @@
     }
 
     /* ── Table ── */
-    .cr-page .table-scroll { overflow-x: auto; }
-    .cr-page .table-scroll::-webkit-scrollbar { height: 4px; }
-    .cr-page .table-scroll::-webkit-scrollbar-track { background: var(--bg-soft); }
-    .cr-page .table-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .cr-page .table-scroll { overflow-x: auto; min-height: 350px; }
+    .cr-page .table-scroll::-webkit-scrollbar { height: 8px; }
+    .cr-page .table-scroll::-webkit-scrollbar-track { background: var(--bg-soft); border-radius: 4px; margin: 0 4px; }
+    .cr-page .table-scroll::-webkit-scrollbar-thumb { background: #64748b; border-radius: 4px; }
+    .cr-page .table-scroll::-webkit-scrollbar-thumb:hover { background: #475569; }
 
     .cr-page .cr-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .cr-page .cr-table th {
-        text-align: left; padding: 9px 14px; color: var(--text-navy);
-        font-weight: 600; font-size: 10px; text-transform: uppercase;
-        letter-spacing: 0.5px; border: 1px solid #1e3a5f;
-        white-space: nowrap; background: var(--bg-soft);
+    
+    /* ── EWM-style HEADER ── */
+    .cr-page .cr-table thead > tr > th {
+        background-color: #020495; color: #ffffff;
+        font-size: 11px; font-weight: 800; text-transform: uppercase;
+        letter-spacing: 0.5px; padding: 10px 14px;
+        border: 1px solid rgba(255,255,255,0.2); white-space: nowrap; vertical-align: middle;
     }
+    
+    .cr-page .th-inner { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .cr-page .th-label { flex: 1; }
+
+    /* ── View Settings Popover ── */
+    .cr-page .vs-popover {
+        position: absolute; top: calc(100% + 5px); right: 0;
+        background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15); width: 220px;
+        max-height: 400px; overflow-y: auto; overflow-x: hidden;
+        z-index: 100; color: #0f172a; text-align: left;
+        display: flex; flex-direction: column;
+        animation: vsFade 0.15s ease-out; font-family: 'DM Sans', sans-serif;
+    }
+    @@keyframes vsFade { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+    .cr-page .vs-header {
+        font-size: 10px; font-weight: 800; color: #94a3b8;
+        padding: 12px 14px 8px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .cr-page .vs-body { padding: 4px 14px 12px; display: flex; flex-direction: column; gap: 8px; }
+    .cr-page .vs-check { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 500; font-family: inherit; }
+    .cr-page .vs-check input[type="checkbox"] { accent-color: #020495; width: 14px; height: 14px; cursor: pointer; }
+    .cr-page .vs-footer {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 10px 14px; background: #f8fafc; border-top: 1px solid #e2e8f0; position: sticky; bottom: 0;
+    }
+    .cr-page .vs-count { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; }
+    .cr-page .vs-restore { font-size: 10px; font-weight: 800; color: #020495; cursor: pointer; background: none; border: none; text-transform: uppercase; transition: color 0.15s; font-family: inherit; padding: 0; }
+    .cr-page .vs-restore:hover { color: #010370; text-decoration: underline; }
     .cr-page .cr-table td {
         padding: 10px 14px; color: var(--text-900);
         border: 1px solid #1e3a5f; vertical-align: middle;
-        white-space: normal; word-break: break-word;
+        white-space: nowrap;
     }
     .cr-page .cr-table tbody tr:hover td { background: #eff6ff; }
 
@@ -179,7 +213,18 @@
         font-family: 'JetBrains Mono', monospace; font-size: 11px;
         color: var(--text-navy); text-align: right;
     }
-    .cr-page .cell-actions { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .cr-page .cell-actions { display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+
+    /* ── Actions ── */
+    .cr-page .icon-btn {
+        background: none; border: none; cursor: pointer; padding: 4px 6px;
+        color: #475569; display: flex; flex-direction: row;
+        align-items: center; gap: 5px; transition: color 0.15s;
+        font-size: 11px; font-weight: 600; font-family: inherit;
+        border-radius: 6px;
+    }
+    .cr-page .icon-btn:hover { color: #020495; background: #f1f5f9; }
+    .cr-page .icon-btn.danger:hover { color: #dc2626; background: #fef2f2; }
 
     /* ── Toggle Switch ── */
     .cr-page .toggle-switch {
@@ -208,25 +253,36 @@
         color: var(--text-muted); font-size: 13px;
     }
 
-    /* ── Form Card ── */
-    .cr-page .form-card {
-        background: var(--white); border: 1px solid var(--border);
-        border-radius: 14px; padding: 24px 26px; margin-bottom: 20px;
-        box-shadow: 0 1px 4px rgba(15,23,42,0.05);
-        border-top: 3px solid var(--accent);
-        animation: crFadeUp 0.3s ease both;
+    /* ── Drawer ── */
+    .cr-drawer-overlay {
+        position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4);
+        z-index: 1000; backdrop-filter: blur(2px);
+        animation: crFadeIn 0.2s ease-out forwards;
     }
-    .cr-page .form-card-title {
-        font-size: 15px; font-weight: 700; color: var(--text-900);
-        margin: 0 0 20px 0; padding-bottom: 14px;
-        border-bottom: 1px solid var(--border);
-        display: flex; align-items: center; gap: 8px;
+    .cr-drawer {
+        position: fixed; top: 0; right: 0; bottom: 0; width: 550px; max-width: 100vw;
+        background: var(--white); z-index: 1001;
+        box-shadow: -4px 0 24px rgba(0,0,0,0.1);
+        display: flex; flex-direction: column;
+        transform: translateX(100%);
+        animation: crSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @@keyframes crFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @@keyframes crSlideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+    .cr-drawer-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 20px 24px; border-bottom: 1px solid var(--border); background: var(--bg-soft);
+    }
+    .cr-drawer-title { font-size: 16px; font-weight: 800; color: var(--text-900); display: flex; align-items: center; gap: 8px; }
+    .cr-drawer-body {
+        flex: 1; overflow-y: auto; padding: 24px;
+        display: flex; flex-direction: column; gap: 10px;
     }
     .cr-page .form-section-label {
         font-size: 11px; font-weight: 700; text-transform: uppercase;
         letter-spacing: 0.6px; color: var(--accent);
-        margin: 20px 0 10px 0;
-        display: flex; align-items: center; gap: 8px;
+        margin: 20px 0 10px 0; display: flex; align-items: center; gap: 8px;
     }
     .cr-page .form-section-label::after {
         content: ''; flex: 1; height: 1px; background: var(--border);
@@ -255,8 +311,8 @@
     }
     .cr-page .form-check-row label { font-size: 13px; color: var(--text-900); cursor: pointer; }
     .cr-page .form-actions {
-        display: flex; gap: 10px; margin-top: 20px;
-        padding-top: 16px; border-top: 1px solid var(--border);
+        display: flex; gap: 10px; justify-content: flex-end;
+        padding: 16px 24px; border-top: 1px solid var(--border); background: var(--bg-soft);
     }
 </style>
 
@@ -265,137 +321,388 @@
     @* ── Page Header ── *@
     <div class="page-header">
         <div>
-            <h3>Règles de Détection de Cycles</h3>
-            <p>Configurez comment le Worker détecte le début et la fin d'un cycle de production pour chaque machine.</p>
+            <h3>@Loc.T("page.rules.title")</h3>
+            <p>@Loc.T("page.rules.subtitle")</p>
         </div>
     </div>
 
     @* ── Toolbar ── *@
-    <div class="toolbar">
-        <select class="cr-select" @bind="_selectedMachine" @bind:after="LoadRules">
-            <option value="">-- Sélectionner une machine --</option>
+    <div class="toolbar" style="justify-content: space-between;">
+        <select class="cr-select" @bind="_selectedMachine" @bind:after="LoadRules" style="min-width:200px;">
+            <option value="">@Loc.T("common.select_machine")</option>
             @foreach (var m in _machines)
             {
                 <option value="@m.MachineCode">@m.MachineCode — @m.Name</option>
             }
         </select>
-        <button class="cr-btn cr-btn-ghost" @onclick="LoadRules">Rafraîchir</button>
-        @if (!string.IsNullOrEmpty(_selectedMachine))
-        {
-            <button class="cr-btn cr-btn-primary" @onclick="NewRule">+ Nouvelle Règle</button>
-        }
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <button class="cr-btn cr-btn-ghost" @onclick="LoadRules">@Loc.T("common.refresh")</button>
+            @if (!string.IsNullOrEmpty(_selectedMachine))
+            {
+                <button class="cr-btn cr-btn-primary" @onclick="NewRule">@Loc.T("common.new")</button>
+            }
+        </div>
     </div>
 
     @if (_error is not null)
     {
-        <div class="cr-alert-danger">@_error</div>
+        <div class="cr-alert-danger">@(_error.Contains("Failed to fetch") ? Loc.T("common.error_fetch") : _error)</div>
+    }
+
+    @* ── Create Form (Drawer) ── *@
+    @if (_form is not null && _editId is null)
+    {
+        <div class="cr-drawer-overlay" @onclick="Cancel"></div>
+        <div class="cr-drawer">
+            <div class="cr-drawer-header">
+                <div class="cr-drawer-title">Créer une Règle</div>
+                <button class="icon-btn" style="padding:0;" @onclick="Cancel">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div class="cr-drawer-body">
+                <div class="form-section-label" style="margin-top:0;">Identité</div>
+            <div class="form-row">
+                <div class="form-group" style="flex:2;">
+                    <label>Scope Key</label>
+                    <input class="cr-input mono" @bind="_form.ScopeKey" placeholder="default" />
+                </div>
+                <div class="form-group" style="flex:0;min-width:80px;">
+                    <label>&nbsp;</label>
+                    <div class="form-check-row">
+                        <input type="checkbox" id="chkActiveTop" @bind="_form.IsActive" />
+                        <label for="chkActiveTop">Actif</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section-label">Détection de Début</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Start Strategy</label>
+                    <select class="cr-form-select" @bind="_form.StartStrategy">
+                        <option>EdgeOnBit</option><option>ValueEquals</option>
+                        <option>CounterIncrease</option><option>LastChanged</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:3;">
+                    <label>Start NodeId</label>
+                    <input class="cr-input mono" @bind="_form.StartNodeId" placeholder="ns=2;i=..." />
+                </div>
+                <div class="form-group">
+                    <label>Edge Type</label>
+                    <select class="cr-form-select" @bind="_form.StartEdgeType">
+                        <option value="">—</option><option>Rising</option><option>Falling</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Start Value</label>
+                    <input class="cr-input" @bind="_form.StartValue" placeholder="optionnel" />
+                </div>
+            </div>
+
+            <div class="form-section-label">Détection de Fin — Primaire</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>End Strategy</label>
+                    <select class="cr-form-select" @bind="_form.EndPrimaryStrategy">
+                        <option>EdgeOnBit</option><option>LastChanged</option>
+                        <option>ValueEquals</option><option>CounterIncrease</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:3;">
+                    <label>End NodeId</label>
+                    <input class="cr-input mono" @bind="_form.EndPrimaryNodeId" placeholder="ns=2;i=..." />
+                </div>
+                <div class="form-group">
+                    <label>Edge Type</label>
+                    <select class="cr-form-select" @bind="_form.EndPrimaryEdgeType">
+                        <option value="">—</option><option>Rising</option><option>Falling</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-section-label">Détection de Fin — Fallback (optionnel)</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Fallback Strategy</label>
+                    <select class="cr-form-select" @bind="_form.EndFallbackStrategy">
+                        <option value="">— Aucun —</option>
+                        <option>EdgeOnBit</option><option>LastChanged</option>
+                        <option>ValueEquals</option><option>CounterIncrease</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:3;">
+                    <label>Fallback NodeId</label>
+                    <input class="cr-input mono" @bind="_form.EndFallbackNodeId" placeholder="ns=2;i=..." />
+                </div>
+            </div>
+
+            <div class="form-section-label">Sécurité / Echec (Abort)</div>
+            <div class="form-row">
+                <div class="form-group full-width">
+                    <label>Abort NodeIds (séparés par point-virgule)</label>
+                    <input class="cr-input mono" @bind="_form.AbortNodeIds" placeholder="ns=2;i=Tag1;ns=2;i=Tag2" />
+                </div>
+            </div>
+
+            <div class="form-section-label">Timing & Tolérances</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Debounce (ms)</label>
+                    <input class="cr-input" type="number" @bind="_form.DebounceMs" />
+                </div>
+                <div class="form-group">
+                    <label>Min Cycle (s)</label>
+                    <input class="cr-input" type="number" @bind="_form.MinCycleSeconds" />
+                </div>
+                <div class="form-group">
+                    <label>Timeout (s)</label>
+                    <input class="cr-input" type="number" @bind="_form.TimeoutSeconds" />
+                </div>
+                <div class="form-group">
+                    <label>Epsilon</label>
+                    <input class="cr-input" type="number" step="0.001" @bind="_form.Epsilon" />
+                </div>
+                <div class="form-group">
+                    <label>Target Tolerance</label>
+                    <input class="cr-input" type="number" step="0.001" @bind="_form.TargetTolerance" />
+                </div>
+                <div class="form-group" style="flex:2;">
+                    <label>Speed NodeId</label>
+                    <input class="cr-input mono" @bind="_form.ValidationSpeedNodeId" placeholder="ns=2;i=..." />
+                </div>
+                <div class="form-group">
+                    <label>Speed Min</label>
+                    <input class="cr-input" type="number" step="0.001" @bind="_form.ValidationSpeedMin" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex:2;">
+                    <label>State NodeId</label>
+                    <input class="cr-input mono" @bind="_form.ValidationStateNodeId" placeholder="ns=2;i=..." />
+                </div>
+                <div class="form-group">
+                    <label>State Value</label>
+                    <input class="cr-input" @bind="_form.ValidationStateValue" placeholder="ex: RUNNING" />
+                </div>
+            </div>
+
+            <div class="form-section-label">Recovery (reprise après redémarrage)</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Recovery Strategy</label>
+                    <select class="cr-form-select" @bind="_form.RecoveryStrategy">
+                        <option value="">— Aucun —</option>
+                        <option>None</option><option>EdgeConfirm</option><option>CounterConfirm</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:2;">
+                    <label>Confirm NodeId</label>
+                    <input class="cr-input mono" @bind="_form.RecoveryConfirmNodeId" placeholder="ns=2;i=..." />
+                </div>
+                <div class="form-group">
+                    <label>Confirm Delta</label>
+                    <input class="cr-input" type="number" step="0.001" @bind="_form.RecoveryConfirmDelta" />
+                </div>
+                <div class="form-group">
+                    <label>Window (s)</label>
+                    <input class="cr-input" type="number" @bind="_form.RecoveryConfirmWindowSeconds" />
+                </div>
+            </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="cr-btn cr-btn-ghost" @onclick="Cancel">Annuler</button>
+                <button type="button" class="cr-btn cr-btn-primary" @onclick="Save">Enregistrer</button>
+            </div>
+        </div>
     }
 
     @* ── Rules Table ── *@
     @if (_rules is not null && _rules.Count > 0)
     {
-        <div class="table-card">
-            <div class="table-card-header">
-                <div class="table-card-title">
-                    Règles — <span style="color:var(--accent)">@_selectedMachine</span>
-                    <span class="rules-count">@_rules.Count règle@(_rules.Count > 1 ? "s" : "")</span>
-                </div>
+        <div class="table-card-top-info" style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="font-size: 14px; font-weight: 700; color: #0f172a;">
+                Règles — <span style="color:#1e40af">@_selectedMachine</span>
+                <span style="display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 10px; background: rgba(30,64,175,0.07); border: 1px solid #bfdbfe; color: #1e40af; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; margin-left: 8px;">
+                    @_rules.Count règle@(_rules.Count > 1 ? "s" : "")
+                </span>
             </div>
+        </div>
+        <div class="table-card">
             <div class="table-scroll">
                 <table class="cr-table">
                     <thead>
                         <tr>
-                            <th>Id</th><th>Scope</th><th>Active</th>
-                            <th>Start Strategy</th><th>Start NodeId</th><th>Start Edge</th><th>Start Value</th>
-                            <th>End Strategy</th><th>End NodeId</th><th>End Edge</th>
-                            <th>Fallback Strategy</th><th>Fallback NodeId</th>
-                            <th>Abort NodeIds</th>
-                            <th>Debounce (ms)</th><th>Min Cycle (s)</th><th>Timeout (s)</th>
-                            <th>Epsilon</th><th>Tolerance</th>
-                            <th>Speed NodeId</th><th>Speed Min</th>
-                            <th>State NodeId</th><th>State Value</th>
-                            <th>Recovery</th><th>Recovery NodeId</th><th>Delta</th><th>Window (s)</th>
-                            <th></th>
+                            @if(ShowColId) { <th><div class="th-inner"><span class="th-label">@Loc.T("col.id")</span></div></th> }
+                            @if(ShowColScope) { <th><div class="th-inner"><span class="th-label">Scope</span></div></th> }
+                            @if(ShowColActive) { <th><div class="th-inner"><span class="th-label">@Loc.T("col.active")</span></div></th> }
+                            @if(ShowColStartStrat) { <th><div class="th-inner"><span class="th-label">@Loc.T("page.rules.start") Strategy</span></div></th> }
+                            @if(ShowColStartNodeId) { <th><div class="th-inner"><span class="th-label">@Loc.T("page.rules.start") NodeId</span></div></th> }
+                            @if(ShowColStartEdge) { <th><div class="th-inner"><span class="th-label">Start Edge</span></div></th> }
+                            @if(ShowColStartVal) { <th><div class="th-inner"><span class="th-label">Start Value</span></div></th> }
+                            @if(ShowColEndStrat) { <th><div class="th-inner"><span class="th-label">End Strategy</span></div></th> }
+                            @if(ShowColEndNodeId) { <th><div class="th-inner"><span class="th-label">End NodeId</span></div></th> }
+                            @if(ShowColEndEdge) { <th><div class="th-inner"><span class="th-label">End Edge</span></div></th> }
+                            @if(ShowColFallbackStrat) { <th><div class="th-inner"><span class="th-label">Fallback Strat</span></div></th> }
+                            @if(ShowColFallbackNode) { <th><div class="th-inner"><span class="th-label">Fallback NodeId</span></div></th> }
+                            @if(ShowColAbortNodes) { <th><div class="th-inner"><span class="th-label">Abort NodeIds</span></div></th> }
+                            @if(ShowColDebounce) { <th><div class="th-inner"><span class="th-label">Debounce (ms)</span></div></th> }
+                            @if(ShowColMinCycle) { <th><div class="th-inner"><span class="th-label">Min Cycle (s)</span></div></th> }
+                            @if(ShowColTimeout) { <th><div class="th-inner"><span class="th-label">Timeout (s)</span></div></th> }
+                            @if(ShowColEpsilon) { <th><div class="th-inner"><span class="th-label">Epsilon</span></div></th> }
+                            @if(ShowColTolerance) { <th><div class="th-inner"><span class="th-label">Tolerance</span></div></th> }
+                            @if(ShowColSpeedNode) { <th><div class="th-inner"><span class="th-label">Speed NodeId</span></div></th> }
+                            @if(ShowColSpeedMin) { <th><div class="th-inner"><span class="th-label">Speed Min</span></div></th> }
+                            @if(ShowColStateNode) { <th><div class="th-inner"><span class="th-label">State NodeId</span></div></th> }
+                            @if(ShowColStateVal) { <th><div class="th-inner"><span class="th-label">State Value</span></div></th> }
+                            @if(ShowColRecovStrat) { <th><div class="th-inner"><span class="th-label">Recovery</span></div></th> }
+                            @if(ShowColRecovNode) { <th><div class="th-inner"><span class="th-label">Recov NodeId</span></div></th> }
+                            @if(ShowColRecovDelta) { <th><div class="th-inner"><span class="th-label">Delta</span></div></th> }
+                            @if(ShowColRecovWin) { <th><div class="th-inner"><span class="th-label">Window (s)</span></div></th> }
+
+                            <th style="position: relative;">
+                                <div class="th-inner" style="justify-content: space-between;">
+                                    <span class="th-label">@Loc.T("common.actions")</span>
+                                    <svg @onclick="() => ShowViewSettings = !ShowViewSettings" style="cursor: pointer; opacity: 0.8; margin-left: 10px;" xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                    </svg>
+                                </div>
+                                @if (ShowViewSettings)
+                                {
+                                    <div class="vs-popover" @onclick:stopPropagation>
+                                        <div class="vs-header">VIEW SETTINGS</div>
+                                        <div class="vs-body">
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColId" /> Id</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColScope" /> Scope</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColActive" /> Active</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColStartStrat" /> Start Strategy</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColStartNodeId" /> Start NodeId</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColStartEdge" /> Start Edge</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColStartVal" /> Start Value</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColEndStrat" /> End Strategy</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColEndNodeId" /> End NodeId</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColEndEdge" /> End Edge</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColFallbackStrat" /> Fallback Strat</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColFallbackNode" /> Fallback NodeId</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColAbortNodes" /> Abort NodeIds</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColDebounce" /> Debounce</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColMinCycle" /> Min Cycle</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColTimeout" /> Timeout</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColEpsilon" /> Epsilon</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColTolerance" /> Tolerance</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColSpeedNode" /> Speed NodeId</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColSpeedMin" /> Speed Min</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColStateNode" /> State NodeId</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColStateVal" /> State Value</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColRecovStrat" /> Recovery</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColRecovNode" /> Recov NodeId</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColRecovDelta" /> Delta</label>
+                                            <label class="vs-check"><input type="checkbox" @bind="ShowColRecovWin" /> Window (s)</label>
+                                        </div>
+                                        <div class="vs-footer">
+                                            <span class="vs-count">@ActiveColsCount / 26 ACTIVE</span>
+                                            <button class="vs-restore" @onclick="RestoreColumns">RESTORE</button>
+                                        </div>
+                                    </div>
+                                }
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var r in _rules)
                         {
                             <tr>
-                                <td><span class="cell-id">@r.Id</span></td>
-                                <td><span class="cell-scope">@r.ScopeKey</span></td>
-                                <td>
-                                    <label class="toggle-switch @(r.IsActive ? "on" : "")" title="@(r.IsActive ? "Actif" : "Inactif")">
-                                        <div class="toggle-track"><div class="toggle-thumb"></div></div>
-                                    </label>
-                                </td>
-                                <td><span class="cell-strategy">@r.StartStrategy</span></td>
-                                <td>
-                                    <div class="cell-nodeid-container">
-                                        <span class="cell-nodeid" title="@r.StartNodeId">@r.StartNodeId</span>
-                                        @if (!string.IsNullOrEmpty(r.StartNodeId)) {
-                                            <button class="btn-copy-nodeid" @onclick='() => CopyToClipboard(r.StartNodeId, $"{r.Id}-start")'>
-                                                @if (_copiedCellId == $"{r.Id}-start") { <span style="color:var(--green-txt);font-size:10px;font-weight:bold">✓</span> }
-                                                else { <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> }
-                                            </button>
-                                        }
-                                    </div>
-                                </td>
-                                <td><span class="cell-edge">@r.StartEdgeType</span></td>
-                                <td><span class="cell-edge">@r.StartValue</span></td>
-                                <td><span class="cell-strategy">@r.EndPrimaryStrategy</span></td>
-                                <td>
-                                    <div class="cell-nodeid-container">
-                                        <span class="cell-nodeid" title="@r.EndPrimaryNodeId">@r.EndPrimaryNodeId</span>
-                                        @if (!string.IsNullOrEmpty(r.EndPrimaryNodeId)) {
-                                            <button class="btn-copy-nodeid" @onclick='() => CopyToClipboard(r.EndPrimaryNodeId, $"{r.Id}-end1")'>
-                                                @if (_copiedCellId == $"{r.Id}-end1") { <span style="color:var(--green-txt);font-size:10px;font-weight:bold">✓</span> }
-                                                else { <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> }
-                                            </button>
-                                        }
-                                    </div>
-                                </td>
-                                <td><span class="cell-edge">@r.EndPrimaryEdgeType</span></td>
-                                <td><span class="cell-strategy">@r.EndFallbackStrategy</span></td>
-                                <td>
-                                    <div class="cell-nodeid-container">
-                                        <span class="cell-nodeid" title="@r.EndFallbackNodeId">@r.EndFallbackNodeId</span>
-                                        @if (!string.IsNullOrEmpty(r.EndFallbackNodeId)) {
-                                            <button class="btn-copy-nodeid" @onclick='() => CopyToClipboard(r.EndFallbackNodeId, $"{r.Id}-endfb")'>
-                                                @if (_copiedCellId == $"{r.Id}-endfb") { <span style="color:var(--green-txt);font-size:10px;font-weight:bold">✓</span> }
-                                                else { <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> }
-                                            </button>
-                                        }
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="cell-nodeid-container">
-                                        <span class="cell-nodeid" title="@r.AbortNodeIds">@r.AbortNodeIds</span>
-                                        @if (!string.IsNullOrEmpty(r.AbortNodeIds)) {
-                                            <button class="btn-copy-nodeid" @onclick='() => CopyToClipboard(r.AbortNodeIds, $"{r.Id}-abort")'>
-                                                @if (_copiedCellId == $"{r.Id}-abort") { <span style="color:var(--green-txt);font-size:10px;font-weight:bold">✓</span> }
-                                                else { <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> }
-                                            </button>
-                                        }
-                                    </div>
-                                </td>
-                                <td><span class="cell-num">@r.DebounceMs</span></td>
-                                <td><span class="cell-num">@r.MinCycleSeconds</span></td>
-                                <td><span class="cell-num">@r.TimeoutSeconds</span></td>
-                                <td><span class="cell-num">@r.Epsilon</span></td>
-                                <td><span class="cell-num">@r.TargetTolerance</span></td>
-                                <td><span class="cell-nodeid">@r.ValidationSpeedNodeId</span></td>
-                                <td><span class="cell-num">@r.ValidationSpeedMin</span></td>
-                                <td><span class="cell-nodeid">@r.ValidationStateNodeId</span></td>
-                                <td><span class="cell-edge">@r.ValidationStateValue</span></td>
-                                <td><span class="cell-strategy">@r.RecoveryStrategy</span></td>
-                                <td><span class="cell-nodeid">@r.RecoveryConfirmNodeId</span></td>
-                                <td><span class="cell-num">@r.RecoveryConfirmDelta</span></td>
-                                <td><span class="cell-num">@r.RecoveryConfirmWindowSeconds</span></td>
+                                @if(ShowColId) { <td><span class="cell-id">@r.Id</span></td> }
+                                @if(ShowColScope) { <td><span class="cell-scope">@r.ScopeKey</span></td> }
+                                @if(ShowColActive) {
+                                    <td>
+                                        <label class="toggle-switch @(r.IsActive ? "on" : "")" title="@(r.IsActive ? "Actif" : "Inactif")">
+                                            <div class="toggle-track"><div class="toggle-thumb"></div></div>
+                                        </label>
+                                    </td>
+                                }
+                                @if(ShowColStartStrat) { <td><span class="cell-strategy">@r.StartStrategy</span></td> }
+                                @if(ShowColStartNodeId) {
+                                    <td>
+                                        <div class="cell-nodeid-container">
+                                            <span class="cell-nodeid" title="@r.StartNodeId">@r.StartNodeId</span>
+                                            @if (!string.IsNullOrEmpty(r.StartNodeId)) {
+                                                <button class="btn-copy-nodeid" @onclick='() => CopyToClipboard(r.StartNodeId, $"{r.Id}-start")'>
+                                                    @if (_copiedCellId == $"{r.Id}-start") { <span style="color:var(--green-txt);font-size:10px;font-weight:bold">✓</span> }
+                                                    else { <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> }
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
+                                }
+                                @if(ShowColStartEdge) { <td><span class="cell-edge">@r.StartEdgeType</span></td> }
+                                @if(ShowColStartVal) { <td><span class="cell-edge">@r.StartValue</span></td> }
+                                @if(ShowColEndStrat) { <td><span class="cell-strategy">@r.EndPrimaryStrategy</span></td> }
+                                @if(ShowColEndNodeId) {
+                                    <td>
+                                        <div class="cell-nodeid-container">
+                                            <span class="cell-nodeid" title="@r.EndPrimaryNodeId">@r.EndPrimaryNodeId</span>
+                                            @if (!string.IsNullOrEmpty(r.EndPrimaryNodeId)) {
+                                                <button class="btn-copy-nodeid" @onclick='() => CopyToClipboard(r.EndPrimaryNodeId, $"{r.Id}-end1")'>
+                                                    @if (_copiedCellId == $"{r.Id}-end1") { <span style="color:var(--green-txt);font-size:10px;font-weight:bold">✓</span> }
+                                                    else { <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> }
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
+                                }
+                                @if(ShowColEndEdge) { <td><span class="cell-edge">@r.EndPrimaryEdgeType</span></td> }
+                                @if(ShowColFallbackStrat) { <td><span class="cell-strategy">@r.EndFallbackStrategy</span></td> }
+                                @if(ShowColFallbackNode) {
+                                    <td>
+                                        <div class="cell-nodeid-container">
+                                            <span class="cell-nodeid" title="@r.EndFallbackNodeId">@r.EndFallbackNodeId</span>
+                                            @if (!string.IsNullOrEmpty(r.EndFallbackNodeId)) {
+                                                <button class="btn-copy-nodeid" @onclick='() => CopyToClipboard(r.EndFallbackNodeId, $"{r.Id}-endfb")'>
+                                                    @if (_copiedCellId == $"{r.Id}-endfb") { <span style="color:var(--green-txt);font-size:10px;font-weight:bold">✓</span> }
+                                                    else { <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> }
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
+                                }
+                                @if(ShowColAbortNodes) {
+                                    <td>
+                                        <div class="cell-nodeid-container">
+                                            <span class="cell-nodeid" title="@r.AbortNodeIds">@r.AbortNodeIds</span>
+                                            @if (!string.IsNullOrEmpty(r.AbortNodeIds)) {
+                                                <button class="btn-copy-nodeid" @onclick='() => CopyToClipboard(r.AbortNodeIds, $"{r.Id}-abort")'>
+                                                    @if (_copiedCellId == $"{r.Id}-abort") { <span style="color:var(--green-txt);font-size:10px;font-weight:bold">✓</span> }
+                                                    else { <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> }
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
+                                }
+                                @if(ShowColDebounce) { <td><span class="cell-num">@r.DebounceMs</span></td> }
+                                @if(ShowColMinCycle) { <td><span class="cell-num">@r.MinCycleSeconds</span></td> }
+                                @if(ShowColTimeout) { <td><span class="cell-num">@r.TimeoutSeconds</span></td> }
+                                @if(ShowColEpsilon) { <td><span class="cell-num">@r.Epsilon</span></td> }
+                                @if(ShowColTolerance) { <td><span class="cell-num">@r.TargetTolerance</span></td> }
+                                @if(ShowColSpeedNode) { <td><span class="cell-nodeid">@r.ValidationSpeedNodeId</span></td> }
+                                @if(ShowColSpeedMin) { <td><span class="cell-num">@r.ValidationSpeedMin</span></td> }
+                                @if(ShowColStateNode) { <td><span class="cell-nodeid">@r.ValidationStateNodeId</span></td> }
+                                @if(ShowColStateVal) { <td><span class="cell-edge">@r.ValidationStateValue</span></td> }
+                                @if(ShowColRecovStrat) { <td><span class="cell-strategy">@r.RecoveryStrategy</span></td> }
+                                @if(ShowColRecovNode) { <td><span class="cell-nodeid">@r.RecoveryConfirmNodeId</span></td> }
+                                @if(ShowColRecovDelta) { <td><span class="cell-num">@r.RecoveryConfirmDelta</span></td> }
+                                @if(ShowColRecovWin) { <td><span class="cell-num">@r.RecoveryConfirmWindowSeconds</span></td> }
+                                
                                 <td>
                                     <div class="cell-actions">
-                                        <button class="cr-btn cr-btn-outline" @onclick="() => EditRule(r)">Edit</button>
-                                        <button class="cr-btn cr-btn-danger" @onclick="() => DeleteRule(r)">Supprimer</button>
+                                        <button class="icon-btn" title="Edit" @onclick="() => EditRule(r)">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                        </button>
+                                        <button class="icon-btn danger" title="Supprimer" @onclick="() => DeleteRule(r)">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -414,15 +721,19 @@
         </div>
     }
 
-    @* ── Create / Edit Form ── *@
-    @if (_form is not null)
+    @* ── Edit Form (Drawer) ── *@
+    @if (_form is not null && _editId is not null)
     {
-        <div class="form-card">
-            <div class="form-card-title">
-                @(_editId is null ? "Créer une Règle" : $"Modifier Règle #{_editId}")
+        <div class="cr-drawer-overlay" @onclick="Cancel"></div>
+        <div class="cr-drawer">
+            <div class="cr-drawer-header">
+                <div class="cr-drawer-title">Modifier Règle #@_editId</div>
+                <button class="icon-btn" style="padding:0;" @onclick="Cancel">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
             </div>
-
-            <div class="form-section-label">Identité</div>
+            <div class="cr-drawer-body">
+                <div class="form-section-label" style="margin-top:0;">Identité</div>
             <div class="form-row">
                 <div class="form-group" style="flex:2;">
                     <label>Scope Key</label>
@@ -575,9 +886,10 @@
                 </div>
             </div>
 
+            </div>
             <div class="form-actions">
-                <button class="cr-btn cr-btn-primary" @onclick="Save">Enregistrer</button>
                 <button class="cr-btn cr-btn-ghost" @onclick="Cancel">Annuler</button>
+                <button class="cr-btn cr-btn-primary" @onclick="Save">Enregistrer</button>
             </div>
         </div>
     }
@@ -597,6 +909,52 @@
             await Task.Delay(1500);
             if (_copiedCellId == cellId) { _copiedCellId = null; StateHasChanged(); }
         } catch {}
+    }
+
+    // View Settings Variables
+    private bool ShowViewSettings = false;
+    private bool ShowColId = true;
+    private bool ShowColScope = true;
+    private bool ShowColActive = true;
+    private bool ShowColStartStrat = true;
+    private bool ShowColStartNodeId = true;
+    private bool ShowColStartEdge = true;
+    private bool ShowColStartVal = true;
+    private bool ShowColEndStrat = true;
+    private bool ShowColEndNodeId = true;
+    private bool ShowColEndEdge = true;
+    private bool ShowColFallbackStrat = true;
+    private bool ShowColFallbackNode = true;
+    private bool ShowColAbortNodes = true;
+    private bool ShowColDebounce = true;
+    private bool ShowColMinCycle = true;
+    private bool ShowColTimeout = true;
+    private bool ShowColEpsilon = true;
+    private bool ShowColTolerance = true;
+    private bool ShowColSpeedNode = true;
+    private bool ShowColSpeedMin = true;
+    private bool ShowColStateNode = true;
+    private bool ShowColStateVal = true;
+    private bool ShowColRecovStrat = true;
+    private bool ShowColRecovNode = true;
+    private bool ShowColRecovDelta = true;
+    private bool ShowColRecovWin = true;
+
+    private int ActiveColsCount => (ShowColId?1:0)+(ShowColScope?1:0)+(ShowColActive?1:0)+(ShowColStartStrat?1:0)+
+    (ShowColStartNodeId?1:0)+(ShowColStartEdge?1:0)+(ShowColStartVal?1:0)+(ShowColEndStrat?1:0)+(ShowColEndNodeId?1:0)+
+    (ShowColEndEdge?1:0)+(ShowColFallbackStrat?1:0)+(ShowColFallbackNode?1:0)+(ShowColAbortNodes?1:0)+(ShowColDebounce?1:0)+
+    (ShowColMinCycle?1:0)+(ShowColTimeout?1:0)+(ShowColEpsilon?1:0)+(ShowColTolerance?1:0)+(ShowColSpeedNode?1:0)+
+    (ShowColSpeedMin?1:0)+(ShowColStateNode?1:0)+(ShowColStateVal?1:0)+(ShowColRecovStrat?1:0)+(ShowColRecovNode?1:0)+
+    (ShowColRecovDelta?1:0)+(ShowColRecovWin?1:0);
+
+    private void RestoreColumns()
+    {
+        ShowColId=true; ShowColScope=true; ShowColActive=true; ShowColStartStrat=true; ShowColStartNodeId=true;
+        ShowColStartEdge=true; ShowColStartVal=true; ShowColEndStrat=true; ShowColEndNodeId=true; ShowColEndEdge=true;
+        ShowColFallbackStrat=true; ShowColFallbackNode=true; ShowColAbortNodes=true; ShowColDebounce=true;
+        ShowColMinCycle=true; ShowColTimeout=true; ShowColEpsilon=true; ShowColTolerance=true; ShowColSpeedNode=true;
+        ShowColSpeedMin=true; ShowColStateNode=true; ShowColStateVal=true; ShowColRecovStrat=true; ShowColRecovNode=true;
+        ShowColRecovDelta=true; ShowColRecovWin=true;
     }
 
     private List<MachineDto> _machines = new();
@@ -652,6 +1010,10 @@
             if (_editId is null)
             {
                 await CycleRulesApi.CreateAsync(_selectedMachine, _form);
+                ActivityLog.LogAdd(
+                    $"Cycle rule ajoutée",
+                    "Cycle Rules",
+                    $"Machine : {_selectedMachine} — Scope : {_form.ScopeKey}");
             }
             else
             {
@@ -672,6 +1034,10 @@
                     RecoveryConfirmDelta = _form.RecoveryConfirmDelta, RecoveryConfirmWindowSeconds = _form.RecoveryConfirmWindowSeconds
                 };
                 await CycleRulesApi.UpdateAsync(_selectedMachine, _editId.Value, upd);
+                ActivityLog.LogModify(
+                    $"Cycle rule #{_editId} modifiée",
+                    "Cycle Rules",
+                    $"Machine : {_selectedMachine} — Seuil mis à jour");
             }
             _form = null; _editId = null;
             await LoadRules();
@@ -682,9 +1048,20 @@
     private async Task DeleteRule(CycleRuleDto r)
     {
         _error = null;
-        try { await CycleRulesApi.DeleteAsync(_selectedMachine, r.Id); await LoadRules(); }
+        try 
+        { 
+            await CycleRulesApi.DeleteAsync(_selectedMachine, r.Id);
+            ActivityLog.LogDelete(
+                $"Cycle rule #{r.Id} supprimée",
+                "Cycle Rules",
+                $"Machine : {_selectedMachine} — Scope : {r.ScopeKey}");
+            await LoadRules();
+        }
         catch (Exception ex) { _error = ex.Message; }
     }
+
+    private void Cancel() { _form = null; _editId = null; }
+}
 
     private void Cancel() { _form = null; _editId = null; }
 }

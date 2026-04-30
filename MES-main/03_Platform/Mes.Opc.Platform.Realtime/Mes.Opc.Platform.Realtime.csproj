@@ -1,24 +1,30 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
   <PropertyGroup>
-    <!-- Realtime gateway targeting .NET 8.0 -->
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <!-- Enable implicit global using directives for common ASP.NET types -->
     <ImplicitUsings>enable</ImplicitUsings>
-    <!-- Produce an executable since this project contains a Program.cs entry point -->
     <OutputType>Exe</OutputType>
+    <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Reference the acquisition runtime to reuse channel and bus types -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.0" />
+    
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.0-preview3.25342.7" />
+    
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+
     <ProjectReference Include="..\..\02_Runtime\Mes.Opc.Acquisition.Runtime\Mes.Opc.Acquisition.Runtime.csproj" />
-    <!-- Reference domain and contracts for models if needed -->
     <ProjectReference Include="..\..\01_Core\Mes.Opc.Contracts\Mes.Opc.Contracts.csproj" />
     <ProjectReference Include="..\..\01_Core\Mes.Opc.Domain\Mes.Opc.Domain.csproj" />
     <ProjectReference Include="..\Mes.Opc.Platform.Data\Mes.Opc.Platform.Data.csproj" />
-    <!-- Bring in JWT bearer authentication support -->
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
-    <!-- Data access for UI configuration (SQL Server + Dapper) -->
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.0-preview3.25342.7" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="appsettings.json">
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
